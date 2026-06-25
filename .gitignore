@@ -1,0 +1,82 @@
+# Build directories
+build/
+builds/
+Builds/
+
+# IDE
+.vscode/
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+
+# JUCE artifacts
+JuceLibraryCode/
+*.jucer.user
+
+# OS specific
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Temp files
+*.tmp
+*.bak
+*.log
+
+# IDE specific
+*.cbp
+*.layout
+*.depend
+*.workspace
+*.ncb
+*.suo
+*.sdf
+*.opensdf
+*.opendb
+*.VC.db
+*.VC.opendb
+
+# Xcode
+xcuserdata/
+*.xcworkspace
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+x64/
+Release/
+Debug/
+ipch/
+*.aps
+*.pch
+
+# Plugin artifacts
+*.vst
+*.vst3
+*.component
+*.aax
