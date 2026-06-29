@@ -268,6 +268,10 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     auto startTime = std::chrono::high_resolution_clock::now();
     ScopedNoDenormals noDenormals;
     
+    // Safety check: ensure buffer is valid
+    if (buffer.getNumSamples() == 0 || buffer.getNumChannels() == 0)
+        return;
+    
     // Clear any extra channels
     for (auto i = getTotalNumInputChannels(); i < getTotalNumOutputChannels(); ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
@@ -284,15 +288,21 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     auto* inputGainParam = apvts.getRawParameterValue("globalInputGain");
     if (inputGainParam)
     {
-        smoothedInputGain.setTargetValue(dbToLinear(*inputGainParam));
+        float targetGain = dbToLinear(*inputGainParam);
+        // Safety: clamp extreme values
+        targetGain = jlimit(0.0f, 10.0f, targetGain);
+        smoothedInputGain.setTargetValue(targetGain);
         
-        if (buffer.getNumSamples() > 0)
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            float gainValue = smoothedInputGain.getNextValue();
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
             {
-                float gainValue = smoothedInputGain.getNextValue();
-                for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-                    buffer.setSample(ch, sample, buffer.getSample(ch, sample) * gainValue);
+                float inputSample = buffer.getSample(ch, sample);
+                // Safety: check for invalid values (NaN, inf)
+                if (std::isnan(inputSample) || std::isinf(inputSample))
+                    inputSample = 0.0f;
+                buffer.setSample(ch, sample, inputSample * gainValue);
             }
         }
     }
@@ -304,15 +314,22 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     auto* outputGainParam = apvts.getRawParameterValue("globalOutputGain");
     if (outputGainParam)
     {
-        smoothedOutputGain.setTargetValue(dbToLinear(*outputGainParam));
+        float targetGain = dbToLinear(*outputGainParam);
+        // Safety: clamp extreme values
+        targetGain = jlimit(0.0f, 10.0f, targetGain);
+        smoothedOutputGain.setTargetValue(targetGain);
         
-        if (buffer.getNumSamples() > 0)
+        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            float gainValue = smoothedOutputGain.getNextValue();
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
             {
-                float gainValue = smoothedOutputGain.getNextValue();
-                for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-                    buffer.setSample(ch, sample, buffer.getSample(ch, sample) * gainValue);
+                float outputSample = buffer.getSample(ch, sample);
+                // Safety: check for invalid values and clip
+                if (std::isnan(outputSample) || std::isinf(outputSample))
+                    outputSample = 0.0f;
+                outputSample = jlimit(-1.0f, 1.0f, outputSample * gainValue);
+                buffer.setSample(ch, sample, outputSample);
             }
         }
     }

@@ -1854,11 +1854,20 @@ void GuitarPedalRackEditor::resized()
 
 void GuitarPedalRackEditor::timerCallback()
 {
-    // Update CPU display
-    updateCpuDisplay();
-    
-    // Update status
-    statusLabel.setText("STATUS: READY", dontSendNotification);
+    // Thread-safe UI update (called on message thread, safe to update UI)
+    try
+    {
+        // Update CPU display (read from atomic values)
+        updateCpuDisplay();
+        
+        // Update status (simple UI text update)
+        statusLabel.setText("STATUS: READY", dontSendNotification);
+    }
+    catch (...)
+    {
+        // Safety: catch any exceptions to prevent crashes
+        DBG("Exception in timerCallback");
+    }
 }
 
 //==============================================================================

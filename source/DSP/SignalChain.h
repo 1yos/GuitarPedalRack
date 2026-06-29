@@ -111,12 +111,23 @@ public:
     /** Processes audio through all modules in the chain */
     void process(AudioBuffer<float>& buffer)
     {
+        // Safety check: validate buffer
+        if (buffer.getNumSamples() == 0 || buffer.getNumChannels() == 0)
+            return;
+        
         // Process each module in series
         for (auto& module : modules)
         {
             if (module != nullptr && !module->isBypassed())
+            {
+                // Safety: sanitize buffer before each module
+                sanitizeBuffer(buffer);
                 module->process(buffer);
+            }
         }
+        
+        // Final safety check
+        sanitizeBuffer(buffer);
     }
     
     /** Resets all modules in the chain */
@@ -188,6 +199,24 @@ private:
     double currentSampleRate = 44100.0;
     int maxBlockSize = 512;
     bool isPrepared = false;
+    
+    /** Sanitizes buffer by removing NaN, Inf, and extreme values */
+    void sanitizeBuffer(AudioBuffer<float>& buffer)
+    {
+        for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        {
+            auto* data = buffer.getWritePointer(ch);
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                if (std::isnan(data[i]) || std::isinf(data[i]))
+                    data[i] = 0.0f;
+                else if (data[i] > 10.0f)
+                    data[i] = 1.0f;
+                else if (data[i] < -10.0f)
+                    data[i] = -1.0f;
+            }
+        }
+    }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SignalChain)
 };

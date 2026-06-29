@@ -160,6 +160,13 @@ void Chorus::updateParameters()
 
 float Chorus::readDelayLinear(int channel, float delaySamples)
 {
+    // Safety: validate channel
+    if (channel < 0 || channel >= 2)
+        return 0.0f;
+    
+    // Safety: clamp delay samples to valid range
+    delaySamples = jlimit(0.0f, (float)(MAX_DELAY_SAMPLES - 2), delaySamples);
+    
     // Calculate read position
     float readPos = (float)delayWritePos[channel] - delaySamples;
     
@@ -168,13 +175,25 @@ float Chorus::readDelayLinear(int channel, float delaySamples)
     while (readPos >= (float)MAX_DELAY_SAMPLES)
         readPos -= (float)MAX_DELAY_SAMPLES;
     
-    // Linear interpolation
+    // Linear interpolation with bounds checking
     int pos1 = (int)readPos;
     int pos2 = (pos1 + 1) % MAX_DELAY_SAMPLES;
+    
+    // Safety: validate indices
+    if (pos1 < 0 || pos1 >= MAX_DELAY_SAMPLES || pos2 < 0 || pos2 >= MAX_DELAY_SAMPLES)
+        return 0.0f;
+    
     float frac = readPos - (float)pos1;
+    frac = jlimit(0.0f, 1.0f, frac);
     
     float sample1 = delayBuffer[channel][pos1];
     float sample2 = delayBuffer[channel][pos2];
+    
+    // Safety: check for invalid values
+    if (std::isnan(sample1) || std::isinf(sample1))
+        sample1 = 0.0f;
+    if (std::isnan(sample2) || std::isinf(sample2))
+        sample2 = 0.0f;
     
     return sample1 + frac * (sample2 - sample1);
 }
