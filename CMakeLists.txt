@@ -78,27 +78,11 @@ target_sources(${PROJECT_NAME} PRIVATE
     # State Management
     source/State/PresetManager.cpp
     source/State/PresetManager.h
-    
-    # UI Components
-    source/UI/HardwareKnob.cpp
-    source/UI/HardwareKnob.h
-    source/UI/FunctionalPedal.cpp
-    source/UI/FunctionalPedal.h
-    source/UI/FunctionalAmpHead.cpp
-    source/UI/FunctionalAmpHead.h
-    source/UI/CabinetEditor.cpp
-    source/UI/CabinetEditor.h
 
     source/State/FactoryPresets.cpp
     source/State/PresetFormat.h
     
-    # UI Components
-    source/UI/PedalboardView.cpp
-    source/UI/PedalboardView.h
-    source/UI/ModuleEditor.cpp
-    source/UI/ModuleEditor.h
-    
-    # Modular Rack UI (New)
+    # Modern Modular Rack UI
     source/UI/EffectModule.cpp
     source/UI/EffectModule.h
     source/UI/ModularRackView.cpp
