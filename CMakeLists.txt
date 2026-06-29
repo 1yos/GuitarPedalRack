@@ -97,6 +97,14 @@ target_sources(${PROJECT_NAME} PRIVATE
     source/UI/PedalboardView.h
     source/UI/ModuleEditor.cpp
     source/UI/ModuleEditor.h
+    
+    # Modular Rack UI (New)
+    source/UI/EffectModule.cpp
+    source/UI/EffectModule.h
+    source/UI/ModularRackView.cpp
+    source/UI/ModularRackView.h
+    source/UI/EffectBrowser.cpp
+    source/UI/EffectBrowser.h
 )
 
 # Add include directories

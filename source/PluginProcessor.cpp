@@ -19,6 +19,21 @@ AudioProcessorValueTreeState::ParameterLayout GuitarPedalRackProcessor::createPa
         "globalBypass", "Global Bypass", false));
     
     // ===================================================================
+    // NOISE GATE
+    // ===================================================================
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "gateThreshold", "Gate Threshold",
+        NormalisableRange<float>(-60.0f, 0.0f, 0.1f), -40.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "gateAttack", "Gate Attack",
+        NormalisableRange<float>(0.1f, 100.0f, 0.1f), 1.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "gateRelease", "Gate Release",
+        NormalisableRange<float>(10.0f, 1000.0f, 1.0f), 100.0f));
+    params.push_back(std::make_unique<AudioParameterBool>(
+        "gateBypass", "Gate Bypass", false));
+    
+    // ===================================================================
     // DEEP HEAT PEDAL (Tube Overdrive)
     // ===================================================================
     params.push_back(std::make_unique<AudioParameterFloat>(
@@ -32,6 +47,39 @@ AudioProcessorValueTreeState::ParameterLayout GuitarPedalRackProcessor::createPa
         NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
     params.push_back(std::make_unique<AudioParameterBool>(
         "deepHeatBypass", "Deep Heat Bypass", false));
+    
+    // ===================================================================
+    // DISTORTION
+    // ===================================================================
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "distDrive", "Distortion Drive",
+        NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "distTone", "Distortion Tone",
+        NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "distLevel", "Distortion Level",
+        NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+    params.push_back(std::make_unique<AudioParameterBool>(
+        "distBypass", "Distortion Bypass", false));
+    
+    // ===================================================================
+    // COMPRESSOR
+    // ===================================================================
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "compThreshold", "Compressor Threshold",
+        NormalisableRange<float>(-40.0f, 0.0f, 0.1f), -20.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "compRatio", "Compressor Ratio",
+        NormalisableRange<float>(1.0f, 20.0f, 0.1f), 4.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "compAttack", "Compressor Attack",
+        NormalisableRange<float>(0.1f, 100.0f, 0.1f), 10.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "compRelease", "Compressor Release",
+        NormalisableRange<float>(10.0f, 1000.0f, 1.0f), 100.0f));
+    params.push_back(std::make_unique<AudioParameterBool>(
+        "compBypass", "Compressor Bypass", false));
     
     // ===================================================================
     // VOID PEDAL (Reverb/Ambient)
@@ -62,6 +110,24 @@ AudioProcessorValueTreeState::ParameterLayout GuitarPedalRackProcessor::createPa
         NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
     params.push_back(std::make_unique<AudioParameterBool>(
         "pulseBypass", "Pulse Bypass", false));
+    
+    // ===================================================================
+    // DELAY
+    // ===================================================================
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "delayTime", "Delay Time",
+        NormalisableRange<float>(10.0f, 2000.0f, 1.0f), 500.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "delayFeedback", "Delay Feedback",
+        NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.3f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "delayMix", "Delay Mix",
+        NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.3f));
+    params.push_back(std::make_unique<AudioParameterChoice>(
+        "delayMode", "Delay Mode",
+        StringArray{"Analog", "Digital", "Tape"}, 0));
+    params.push_back(std::make_unique<AudioParameterBool>(
+        "delayBypass", "Delay Bypass", false));
     
     // ===================================================================
     // ALPHA AMP
@@ -110,6 +176,24 @@ AudioProcessorValueTreeState::ParameterLayout GuitarPedalRackProcessor::createPa
         StringArray{"4x12 V30", "4x12 Greenback", "2x12 Vintage", "1x12 Classic"}, 0));
     params.push_back(std::make_unique<AudioParameterBool>(
         "cabBypass", "Cabinet Bypass", false));
+    
+    // ===================================================================
+    // PARAMETRIC EQ
+    // ===================================================================
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "eqLowGain", "EQ Low Gain",
+        NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "eqLowMidGain", "EQ Low-Mid Gain",
+        NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "eqHighMidGain", "EQ High-Mid Gain",
+        NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<AudioParameterFloat>(
+        "eqHighGain", "EQ High Gain",
+        NormalisableRange<float>(-12.0f, 12.0f, 0.1f), 0.0f));
+    params.push_back(std::make_unique<AudioParameterBool>(
+        "eqBypass", "EQ Bypass", false));
     
     // ===================================================================
     // MORPH CONTROL (Macro System)
