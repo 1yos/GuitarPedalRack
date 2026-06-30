@@ -29,9 +29,8 @@ public:
     ~GuitarPedalRackProcessor() override;
     
     //==============================================================================
-    // APVTS Access
-    AudioProcessorValueTreeState& getAPVTS() { return apvts; }
-    const AudioProcessorValueTreeState& getAPVTS() const { return apvts; }
+    // APVTS (Public for direct UI attachment)
+    AudioProcessorValueTreeState apvts;
 
     //==============================================================================
     // AudioProcessor overrides
@@ -106,6 +105,7 @@ public:
     bool isBypassedAll() const { return bypassAll; }
 
     float getDspCpuUsage() const { return dspCpuUsage.load(); }
+    float getCPUUsage() const { return dspCpuUsage.load(); } // Alias for editor
 
 private:
     //==============================================================================
@@ -114,7 +114,6 @@ private:
     
     //==============================================================================
     // Core components
-    AudioProcessorValueTreeState apvts;
     SignalChain signalChain;
     PresetManager presetManager;
     

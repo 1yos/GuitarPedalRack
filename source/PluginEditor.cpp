@@ -2,179 +2,280 @@
 
 //==============================================================================
 GuitarPedalRackEditor::GuitarPedalRackEditor(GuitarPedalRackProcessor& p)
-    : AudioProcessorEditor(&p), audioProcessor(p)
+    : AudioProcessorEditor(&p), audioProcessor(p),
+      deepHeatLED(p.apvts.getRawParameterValue("deepHeatBypass")),
+      pulseLED(p.apvts.getRawParameterValue("pulseBypass")),
+      voidLED(p.apvts.getRawParameterValue("voidBypass"))
 {
     setSize(1280, 720);
     setResizable(false, false);
     
-    //==============================================================================
-    // TOP TOOLBAR
-    //==============================================================================
-    addAndMakeVisible(topToolbar);
+    // ============ TITLE ============
+    addAndMakeVisible(titleLabel);
+    titleLabel.setText("GUITAR PEDAL RACK", dontSendNotification);
+    titleLabel.setFont(Font(36.0f, Font::bold));
+    titleLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    titleLabel.setJustificationType(Justification::centred);
     
-    topToolbar.addAndMakeVisible(brandLabel);
-    brandLabel.setText("GUITAR PEDAL RACK", dontSendNotification);
-    brandLabel.setFont(Font(18.0f, Font::bold));
-    brandLabel.setColour(Label::textColourId, Colours::white);
-    
-    topToolbar.addAndMakeVisible(fileButton);
-    fileButton.setButtonText("FILE");
-    fileButton.setColour(TextButton::buttonColourId, Colour(0xff2A2A2A));
-    fileButton.onClick = [this]() {
-        PopupMenu menu;
-        menu.addItem(1, "New Session");
-        menu.addItem(2, "Load Preset...");
-        menu.addItem(3, "Save Preset As...");
-        menu.addSeparator();
-        menu.addItem(4, "Export Settings...");
-        menu.addItem(5, "Import Settings...");
-        menu.addSeparator();
-        menu.addItem(6, "Preferences");
-        
-        menu.showMenuAsync(PopupMenu::Options().withTargetComponent(&fileButton));
-    };
-    
-    topToolbar.addAndMakeVisible(editButton);
-    editButton.setButtonText("EDIT");
-    editButton.setColour(TextButton::buttonColourId, Colour(0xff2A2A2A));
-    
-    topToolbar.addAndMakeVisible(settingsButton);
-    settingsButton.setButtonText("SETTINGS");
-    settingsButton.setColour(TextButton::buttonColourId, Colour(0xff2A2A2A));
-    
-    topToolbar.addAndMakeVisible(presetNameLabel);
-    presetNameLabel.setText(audioProcessor.getCurrentPresetName(), dontSendNotification);
-    presetNameLabel.setFont(Font(14.0f));
-    presetNameLabel.setColour(Label::textColourId, Colour(0xff00E5FF));
-    presetNameLabel.setJustificationType(Justification::centred);
-    
-    topToolbar.addAndMakeVisible(savePresetButton);
-    savePresetButton.setButtonText("SAVE");
-    savePresetButton.setColour(TextButton::buttonColourId, Colour(0xff00E5FF));
-    savePresetButton.setColour(TextButton::textColourOffId, Colour(0xff000000));
-    savePresetButton.onClick = [this]() {
-        AlertWindow::showMessageBoxAsync(AlertWindow::InfoIcon,
-                                         "Save Preset",
-                                         "Preset saved: " + audioProcessor.getCurrentPresetName(),
-                                         "OK");
-    };
-    
-    //==============================================================================
-    // CENTER - MODULAR RACK VIEW
-    //==============================================================================
-    rackView = std::make_unique<ModularRackView>(audioProcessor.getAPVTS());
-    addAndMakeVisible(rackView.get());
-    
-    // Handle add effect clicked
-    rackView->onAddEffectClicked = [this]() {
-        showEffectBrowserOverlay();
-    };
-    
-    // Handle effect added to UI - need to add to DSP chain too
-    rackView->onEffectAdded = [this](EffectModule::EffectType type) {
-        // This will be called after effect is added to UI
-        // TODO: Sync with processor's signal chain
-        DBG("Effect added to UI: " + String((int)type));
-    };
-    
-    // Handle effect removed from UI - need to remove from DSP chain too
-    rackView->onEffectRemoved = [this](int effectIndex) {
-        // This will be called after effect is removed from UI
-        // TODO: Sync with processor's signal chain
-        DBG("Effect removed from UI at index: " + String(effectIndex));
-    };
-    
-    // Handle effect reordered in UI - need to reorder in DSP chain too
-    rackView->onEffectReordered = [this](int fromIndex, int toIndex) {
-        // This will be called after effect is reordered in UI
-        // TODO: Sync with processor's signal chain
-        DBG("Effect reordered from " + String(fromIndex) + " to " + String(toIndex));
-    };
-    
-    //==============================================================================
-    // RIGHT PANEL - GLOBAL CONTROLS
-    //==============================================================================
-    addAndMakeVisible(rightPanel);
-    
-    rightPanel.addAndMakeVisible(globalControlsLabel);
-    globalControlsLabel.setText("GLOBAL CONTROLS", dontSendNotification);
-    globalControlsLabel.setFont(Font(14.0f, Font::bold));
-    globalControlsLabel.setColour(Label::textColourId, Colour(0xff8A8A8A));
-    globalControlsLabel.setJustificationType(Justification::centred);
-    
-    rightPanel.addAndMakeVisible(inputGainLabel);
-    inputGainLabel.setText("INPUT GAIN", dontSendNotification);
-    inputGainLabel.setFont(Font(11.0f, Font::bold));
-    inputGainLabel.setColour(Label::textColourId, Colour(0xff8A8A8A));
-    inputGainLabel.setJustificationType(Justification::centred);
-    
-    rightPanel.addAndMakeVisible(inputGainSlider);
-    inputGainSlider.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    inputGainSlider.setTextBoxStyle(Slider::TextBoxBelow, false, 60, 20);
-    inputGainSlider.setRange(-20.0, 20.0, 0.1);
-    inputGainSlider.setValue(0.0);
-    inputGainSlider.setTextValueSuffix(" dB");
-    inputGainAttachment = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "globalInputGain", inputGainSlider);
-    
-    rightPanel.addAndMakeVisible(outputGainLabel);
-    outputGainLabel.setText("OUTPUT GAIN", dontSendNotification);
-    outputGainLabel.setFont(Font(11.0f, Font::bold));
-    outputGainLabel.setColour(Label::textColourId, Colour(0xff8A8A8A));
-    outputGainLabel.setJustificationType(Justification::centred);
-    
-    rightPanel.addAndMakeVisible(outputGainSlider);
-    outputGainSlider.setSliderStyle(Slider::RotaryHorizontalVerticalDrag);
-    outputGainSlider.setTextBoxStyle(Slider::TextBoxBelow, false, 60, 20);
-    outputGainSlider.setRange(-20.0, 20.0, 0.1);
-    outputGainSlider.setValue(0.0);
-    outputGainSlider.setTextValueSuffix(" dB");
-    outputGainAttachment = std::make_unique<AudioProcessorValueTreeState::SliderAttachment>(
-        audioProcessor.getAPVTS(), "globalOutputGain", outputGainSlider);
-    
-    //==============================================================================
-    // BOTTOM STATUS BAR
-    //==============================================================================
-    addAndMakeVisible(bottomStatusBar);
-    
-    bottomStatusBar.addAndMakeVisible(undoButton);
-    undoButton.setButtonText("↶");
-    undoButton.setColour(TextButton::buttonColourId, Colour(0xff2A2A2A));
-    
-    bottomStatusBar.addAndMakeVisible(redoButton);
-    redoButton.setButtonText("↷");
-    redoButton.setColour(TextButton::buttonColourId, Colour(0xff2A2A2A));
-    
-    bottomStatusBar.addAndMakeVisible(statusLabel);
-    statusLabel.setText("Ready", dontSendNotification);
-    statusLabel.setFont(Font(12.0f));
-    statusLabel.setColour(Label::textColourId, Colour(0xff8A8A8A));
-    
-    bottomStatusBar.addAndMakeVisible(cpuLabel);
-    cpuLabel.setText("CPU: 0%", dontSendNotification);
-    cpuLabel.setFont(Font(12.0f, Font::bold));
+    // ============ CPU MONITOR ============
+    addAndMakeVisible(cpuLabel);
+    cpuLabel.setFont(Font(13.0f, Font::bold));
     cpuLabel.setColour(Label::textColourId, Colour(0xff00E5FF));
     
-    bottomStatusBar.addAndMakeVisible(liveModeButton);
-    liveModeButton.setButtonText("● LIVE");
-    liveModeButton.setColour(TextButton::buttonColourId, Colour(0xff66BB6A));
-    liveModeButton.setColour(TextButton::textColourOffId, Colour(0xff000000));
+    // ============ GLOBAL INPUT/OUTPUT ============
+    addAndMakeVisible(inputGain);
+    inputGain.setSliderStyle(Slider::LinearVertical);
+    inputGain.setTextBoxStyle(Slider::TextBoxBelow, false, 50, 20);
+    inputGain.setColour(Slider::thumbColourId, Colour(0xff00E5FF));
+    inputGain.setColour(Slider::trackColourId, Colour(0xff2a2a2a));
+    inputGain.setColour(Slider::textBoxTextColourId, Colours::white);
+    inputAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "globalInputGain", inputGain));
     
-    //==============================================================================
-    // EFFECT BROWSER OVERLAY (Initially hidden)
-    //==============================================================================
-    addChildComponent(browserOverlay);
-    browserOverlay.setAlwaysOnTop(true);
+    addAndMakeVisible(inputLabel);
+    inputLabel.setText("INPUT", dontSendNotification);
+    inputLabel.setFont(Font(12.0f, Font::bold));
+    inputLabel.setColour(Label::textColourId, Colour(0xff00E5FF));
+    inputLabel.setJustificationType(Justification::centred);
     
-    effectBrowser = std::make_unique<EffectBrowser>();
-    browserOverlay.addAndMakeVisible(effectBrowser.get());
+    addAndMakeVisible(outputGain);
+    outputGain.setSliderStyle(Slider::LinearVertical);
+    outputGain.setTextBoxStyle(Slider::TextBoxBelow, false, 50, 20);
+    outputGain.setColour(Slider::thumbColourId, Colour(0xff00FF00));
+    outputGain.setColour(Slider::trackColourId, Colour(0xff2a2a2a));
+    outputGain.setColour(Slider::textBoxTextColourId, Colours::white);
+    outputAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "globalOutputGain", outputGain));
     
-    effectBrowser->onEffectSelected = [this](EffectModule::EffectType type, const String& name) {
-        handleEffectSelected(type, name);
-    };
+    addAndMakeVisible(outputLabel);
+    outputLabel.setText("OUTPUT", dontSendNotification);
+    outputLabel.setFont(Font(12.0f, Font::bold));
+    outputLabel.setColour(Label::textColourId, Colour(0xff00FF00));
+    outputLabel.setJustificationType(Justification::centred);
+
     
-    //==============================================================================
-    // Start timer for CPU monitoring
+    // ============ PEDAL 1: DEEP HEAT (OVERDRIVE) ============
+    deepHeatDrive.setKnobColor(Colour(0xffFF8C00));
+    deepHeatTone.setKnobColor(Colour(0xffFF8C00));
+    deepHeatLevel.setKnobColor(Colour(0xffFF8C00));
+    
+    addAndMakeVisible(deepHeatDrive);
+    addAndMakeVisible(deepHeatTone);
+    addAndMakeVisible(deepHeatLevel);
+    driveAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "deepHeatDrive", deepHeatDrive));
+    toneAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "deepHeatTone", deepHeatTone));
+    levelAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "deepHeatLevel", deepHeatLevel));
+    
+    addAndMakeVisible(driveLabel);
+    driveLabel.setText("DRIVE", dontSendNotification);
+    driveLabel.setFont(Font(10.0f, Font::bold));
+    driveLabel.setColour(Label::textColourId, Colours::white);
+    driveLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(toneLabel);
+    toneLabel.setText("TONE", dontSendNotification);
+    toneLabel.setFont(Font(10.0f, Font::bold));
+    toneLabel.setColour(Label::textColourId, Colours::white);
+    toneLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(levelLabel);
+    levelLabel.setText("LEVEL", dontSendNotification);
+    levelLabel.setFont(Font(10.0f, Font::bold));
+    levelLabel.setColour(Label::textColourId, Colours::white);
+    levelLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(deepHeatNameLabel);
+    deepHeatNameLabel.setText("DEEP HEAT", dontSendNotification);
+    deepHeatNameLabel.setFont(Font(16.0f, Font::bold));
+    deepHeatNameLabel.setColour(Label::textColourId, Colours::white);
+    deepHeatNameLabel.setJustificationType(Justification::centred);
+    
+    deepHeatLED.setLEDColor(Colour(0xffFF8C00));
+    addAndMakeVisible(deepHeatLED);
+    
+    addAndMakeVisible(deepHeatBypass);
+    deepHeatBypass.setButtonText("BYPASS");
+    deepHeatBypass.setColour(TextButton::buttonColourId, Colour(0xff1a1a1a));
+    deepHeatBypass.setColour(TextButton::buttonOnColourId, Colour(0xffFF3333));
+    deepHeatBypass.setClickingTogglesState(true);
+    deepHeatBypassAttach.reset(new AudioProcessorValueTreeState::ButtonAttachment(audioProcessor.apvts, "deepHeatBypass", deepHeatBypass));
+
+    
+    // ============ PEDAL 2: PULSE (CHORUS) ============
+    pulseRate.setKnobColor(Colour(0xff9B59B6));
+    pulseDepth.setKnobColor(Colour(0xff9B59B6));
+    pulseMix.setKnobColor(Colour(0xff9B59B6));
+    
+    addAndMakeVisible(pulseRate);
+    addAndMakeVisible(pulseDepth);
+    addAndMakeVisible(pulseMix);
+    rateAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "pulseRate", pulseRate));
+    depthAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "pulseDepth", pulseDepth));
+    mixAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "pulseMix", pulseMix));
+    
+    addAndMakeVisible(rateLabel);
+    rateLabel.setText("RATE", dontSendNotification);
+    rateLabel.setFont(Font(10.0f, Font::bold));
+    rateLabel.setColour(Label::textColourId, Colours::white);
+    rateLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(depthLabel);
+    depthLabel.setText("DEPTH", dontSendNotification);
+    depthLabel.setFont(Font(10.0f, Font::bold));
+    depthLabel.setColour(Label::textColourId, Colours::white);
+    depthLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(mixLabel);
+    mixLabel.setText("MIX", dontSendNotification);
+    mixLabel.setFont(Font(10.0f, Font::bold));
+    mixLabel.setColour(Label::textColourId, Colours::white);
+    mixLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(pulseNameLabel);
+    pulseNameLabel.setText("PULSE", dontSendNotification);
+    pulseNameLabel.setFont(Font(16.0f, Font::bold));
+    pulseNameLabel.setColour(Label::textColourId, Colours::white);
+    pulseNameLabel.setJustificationType(Justification::centred);
+    
+    pulseLED.setLEDColor(Colour(0xff9B59B6));
+    addAndMakeVisible(pulseLED);
+    
+    addAndMakeVisible(pulseBypass);
+    pulseBypass.setButtonText("BYPASS");
+    pulseBypass.setColour(TextButton::buttonColourId, Colour(0xff1a1a1a));
+    pulseBypass.setColour(TextButton::buttonOnColourId, Colour(0xffFF3333));
+    pulseBypass.setClickingTogglesState(true);
+    pulseBypassAttach.reset(new AudioProcessorValueTreeState::ButtonAttachment(audioProcessor.apvts, "pulseBypass", pulseBypass));
+
+    
+    // ============ PEDAL 3: VOID (REVERB) ============
+    voidSize.setKnobColor(Colour(0xff4B0082));
+    voidDecay.setKnobColor(Colour(0xff4B0082));
+    voidMix2.setKnobColor(Colour(0xff4B0082));
+    
+    addAndMakeVisible(voidSize);
+    addAndMakeVisible(voidDecay);
+    addAndMakeVisible(voidMix2);
+    sizeAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "voidSize", voidSize));
+    decayAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "voidDecay", voidDecay));
+    mix2Attach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "voidMix", voidMix2));
+    
+    addAndMakeVisible(sizeLabel);
+    sizeLabel.setText("SIZE", dontSendNotification);
+    sizeLabel.setFont(Font(10.0f, Font::bold));
+    sizeLabel.setColour(Label::textColourId, Colours::white);
+    sizeLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(decayLabel);
+    decayLabel.setText("DECAY", dontSendNotification);
+    decayLabel.setFont(Font(10.0f, Font::bold));
+    decayLabel.setColour(Label::textColourId, Colours::white);
+    decayLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(mix2Label);
+    mix2Label.setText("MIX", dontSendNotification);
+    mix2Label.setFont(Font(10.0f, Font::bold));
+    mix2Label.setColour(Label::textColourId, Colours::white);
+    mix2Label.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(voidNameLabel);
+    voidNameLabel.setText("VOID", dontSendNotification);
+    voidNameLabel.setFont(Font(16.0f, Font::bold));
+    voidNameLabel.setColour(Label::textColourId, Colours::white);
+    voidNameLabel.setJustificationType(Justification::centred);
+    
+    voidLED.setLEDColor(Colour(0xff4B0082));
+    addAndMakeVisible(voidLED);
+    
+    addAndMakeVisible(voidBypass);
+    voidBypass.setButtonText("BYPASS");
+    voidBypass.setColour(TextButton::buttonColourId, Colour(0xff1a1a1a));
+    voidBypass.setColour(TextButton::buttonOnColourId, Colour(0xffFF3333));
+    voidBypass.setClickingTogglesState(true);
+    voidBypassAttach.reset(new AudioProcessorValueTreeState::ButtonAttachment(audioProcessor.apvts, "voidBypass", voidBypass));
+
+    
+    // ============ AMP: ALPHA AMP ============
+    Colour ampKnobColor = Colour(0xffC8A060);
+    
+    ampGain.setKnobColor(ampKnobColor);
+    ampBass.setKnobColor(ampKnobColor);
+    ampMid.setKnobColor(ampKnobColor);
+    ampTreble.setKnobColor(ampKnobColor);
+    ampPresence.setKnobColor(ampKnobColor);
+    ampMaster.setKnobColor(Colour(0xffFFD700));
+    
+    addAndMakeVisible(ampGain);
+    addAndMakeVisible(ampBass);
+    addAndMakeVisible(ampMid);
+    addAndMakeVisible(ampTreble);
+    addAndMakeVisible(ampPresence);
+    addAndMakeVisible(ampMaster);
+    
+    ampGainAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "ampGain", ampGain));
+    ampBassAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "ampBass", ampBass));
+    ampMidAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "ampMid", ampMid));
+    ampTrebleAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "ampTreble", ampTreble));
+    ampPresenceAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "ampPresence", ampPresence));
+    ampMasterAttach.reset(new AudioProcessorValueTreeState::SliderAttachment(audioProcessor.apvts, "ampMaster", ampMaster));
+    
+    addAndMakeVisible(ampGainLabel);
+    ampGainLabel.setText("GAIN", dontSendNotification);
+    ampGainLabel.setFont(Font(11.0f, Font::bold));
+    ampGainLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    ampGainLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(ampBassLabel);
+    ampBassLabel.setText("BASS", dontSendNotification);
+    ampBassLabel.setFont(Font(11.0f, Font::bold));
+    ampBassLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    ampBassLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(ampMidLabel);
+    ampMidLabel.setText("MID", dontSendNotification);
+    ampMidLabel.setFont(Font(11.0f, Font::bold));
+    ampMidLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    ampMidLabel.setJustificationType(Justification::centred);
+
+    
+    addAndMakeVisible(ampTrebleLabel);
+    ampTrebleLabel.setText("TREBLE", dontSendNotification);
+    ampTrebleLabel.setFont(Font(11.0f, Font::bold));
+    ampTrebleLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    ampTrebleLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(ampPresenceLabel);
+    ampPresenceLabel.setText("PRESENCE", dontSendNotification);
+    ampPresenceLabel.setFont(Font(11.0f, Font::bold));
+    ampPresenceLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    ampPresenceLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(ampMasterLabel);
+    ampMasterLabel.setText("MASTER", dontSendNotification);
+    ampMasterLabel.setFont(Font(11.0f, Font::bold));
+    ampMasterLabel.setColour(Label::textColourId, Colour(0xffFF6B35));
+    ampMasterLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(ampNameLabel);
+    ampNameLabel.setText("ALPHA AMP", dontSendNotification);
+    ampNameLabel.setFont(Font(24.0f, Font::bold));
+    ampNameLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    ampNameLabel.setJustificationType(Justification::centred);
+    
+    addAndMakeVisible(ampChannel);
+    ampChannel.addItem("CLEAN", 1);
+    ampChannel.addItem("CRUNCH", 2);
+    ampChannel.addItem("LEAD", 3);
+    ampChannel.setSelectedId(2);
+    ampChannel.setColour(ComboBox::backgroundColourId, Colour(0xff1a1a1a));
+    ampChannel.setColour(ComboBox::textColourId, Colour(0xffFFD700));
+    ampChannel.setColour(ComboBox::outlineColourId, Colour(0xffFFD700));
+    ampChannelAttach.reset(new AudioProcessorValueTreeState::ComboBoxAttachment(audioProcessor.apvts, "ampChannel", ampChannel));
+    
+    addAndMakeVisible(channelLabel);
+    channelLabel.setText("CHANNEL", dontSendNotification);
+    channelLabel.setFont(Font(11.0f, Font::bold));
+    channelLabel.setColour(Label::textColourId, Colour(0xffFFD700));
+    channelLabel.setJustificationType(Justification::centred);
+    
     startTimerHz(30);
 }
 
@@ -183,134 +284,279 @@ GuitarPedalRackEditor::~GuitarPedalRackEditor()
     stopTimer();
 }
 
+
 //==============================================================================
 void GuitarPedalRackEditor::paint(Graphics& g)
 {
-    // Main background
-    g.fillAll(Colour(0xff0A0A0A));
+    // Dark studio gradient background
+    ColourGradient bgGrad(Colour(0xff0a0a0a), getWidth()/2, 0,
+                           Colour(0xff1a1a1a), getWidth()/2, getHeight(), false);
+    g.setGradientFill(bgGrad);
+    g.fillAll();
     
-    // Top toolbar background
-    g.setColour(Colour(0xff1A1A1A));
-    g.fillRect(topToolbar.getBounds());
+    // Wooden pedal board floor (bottom section)
+    Rectangle<int> floorArea(0, 420, getWidth(), getHeight() - 420);
+    ColourGradient woodGrad(Colour(0xff4a2c1a), 0, floorArea.getY(),
+                             Colour(0xff2d1810), 0, floorArea.getBottom(), false);
+    g.setGradientFill(woodGrad);
+    g.fillRect(floorArea);
     
-    // Right panel background
-    g.setColour(Colour(0xff121212));
-    g.fillRect(rightPanel.getBounds());
-    
-    // Bottom status bar background
-    g.setColour(Colour(0xff1A1A1A));
-    g.fillRect(bottomStatusBar.getBounds());
-    
-    // Browser overlay background (semi-transparent)
-    if (overlayVisible)
+    // Wood grain texture
+    g.setColour(Colour(0xff1a0f08).withAlpha(0.3f));
+    for (int i = 0; i < 60; ++i)
     {
-        g.setColour(Colour(0xff000000).withAlpha(0.7f));
-        g.fillRect(browserOverlay.getBounds());
+        int y = floorArea.getY() + (i * 5);
+        g.drawLine(0.0f, (float)y, (float)getWidth(), (float)(y + 1), 1.5f);
+    }
+    
+    // Draw realistic pedals
+    bool deepHeatBypassed = audioProcessor.apvts.getRawParameterValue("deepHeatBypass")->load() > 0.5f;
+    bool pulseBypassed = audioProcessor.apvts.getRawParameterValue("pulseBypass")->load() > 0.5f;
+    bool voidBypassed = audioProcessor.apvts.getRawParameterValue("voidBypass")->load() > 0.5f;
+    
+    // Pedal positions
+    int pedalY = 450;
+    int pedalW = 220;
+    int pedalH = 250;
+    int spacing = 70;
+    int startX = (getWidth() - (pedalW * 3 + spacing * 2)) / 2;
+    
+    drawRealisticPedal(g, Rectangle<int>(startX, pedalY, pedalW, pedalH), 
+                       "DEEP HEAT", Colour(0xffFF8C00), deepHeatBypassed);
+    
+    drawRealisticPedal(g, Rectangle<int>(startX + pedalW + spacing, pedalY, pedalW, pedalH), 
+                       "PULSE", Colour(0xff9B59B6), pulseBypassed);
+    
+    drawRealisticPedal(g, Rectangle<int>(startX + (pedalW + spacing) * 2, pedalY, pedalW, pedalH), 
+                       "VOID", Colour(0xff4B0082), voidBypassed);
+    
+    // Draw realistic amp
+    drawRealisticAmp(g, Rectangle<int>(100, 120, getWidth() - 200, 260));
+}
+
+
+void GuitarPedalRackEditor::drawRealisticPedal(Graphics& g, Rectangle<int> bounds, 
+                                                const String& name, Colour pedalColor, bool isBypassed)
+{
+    auto b = bounds.toFloat();
+    
+    // Drop shadow for 3D depth
+    g.setColour(Colours::black.withAlpha(0.6f));
+    g.fillRoundedRectangle(b.translated(6, 8).reduced(-2), 15.0f);
+    
+    // Main pedal body - realistic metallic gradient
+    ColourGradient bodyGrad(pedalColor.darker(isBypassed ? 1.5f : 0.7f), b.getCentreX(), b.getY(),
+                             pedalColor.darker(isBypassed ? 2.0f : 1.3f), b.getCentreX(), b.getBottom(), false);
+    g.setGradientFill(bodyGrad);
+    g.fillRoundedRectangle(b, 15.0f);
+    
+    // Glossy top highlight
+    g.setColour(Colours::white.withAlpha(isBypassed ? 0.05f : 0.15f));
+    g.fillRoundedRectangle(b.reduced(15, 15).withHeight(40), 10.0f);
+    
+    // Border - metal edge
+    g.setColour(isBypassed ? Colour(0xff444444) : pedalColor.brighter(0.4f));
+    g.drawRoundedRectangle(b, 15.0f, 3.0f);
+    
+    // Screws in corners (realistic hardware)
+    auto drawScrew = [&g](float x, float y)
+    {
+        g.setColour(Colour(0xff888888));
+        g.fillEllipse(x - 4, y - 4, 8, 8);
+        g.setColour(Colour(0xff555555));
+        g.drawLine(x - 2, y, x + 2, y, 1.5f);
+        g.drawLine(x, y - 2, x, y + 2, 1.5f);
+    };
+    
+    drawScrew(b.getX() + 15, b.getY() + 15);
+    drawScrew(b.getRight() - 15, b.getY() + 15);
+    drawScrew(b.getX() + 15, b.getBottom() - 15);
+    drawScrew(b.getRight() - 15, b.getBottom() - 15);
+}
+
+
+void GuitarPedalRackEditor::drawRealisticAmp(Graphics& g, Rectangle<int> bounds)
+{
+    auto b = bounds.toFloat();
+    
+    // Amp shadow
+    g.setColour(Colours::black.withAlpha(0.5f));
+    g.fillRoundedRectangle(b.translated(4, 6), 10.0f);
+    
+    // Amp tolex (textured black covering)
+    g.setColour(Colour(0xff0a0a0a));
+    g.fillRoundedRectangle(b, 10.0f);
+    
+    // Tolex texture simulation
+    g.setColour(Colour(0xff1a1a1a).withAlpha(0.3f));
+    for (int i = 0; i < 40; ++i)
+    {
+        int x = bounds.getX() + (i * 30);
+        g.drawLine((float)x, (float)bounds.getY(), (float)x, (float)bounds.getBottom(), 2.0f);
+    }
+    
+    // Metal corner hardware
+    auto drawCornerHardware = [&g](float x, float y)
+    {
+        g.setColour(Colour(0xff999999));
+        g.fillRect(x, y, 18.0f, 18.0f);
+        g.setColour(Colour(0xff666666));
+        g.drawRect(x, y, 18.0f, 18.0f, 1.0f);
+        g.setColour(Colour(0xff444444));
+        g.fillEllipse(x + 6, y + 6, 6, 6);
+    };
+    
+    drawCornerHardware(b.getX() + 10, b.getY() + 10);
+    drawCornerHardware(b.getRight() - 28, b.getY() + 10);
+    drawCornerHardware(b.getX() + 10, b.getBottom() - 28);
+    drawCornerHardware(b.getRight() - 28, b.getBottom() - 28);
+    
+    // Control panel inset (gold faceplate)
+    Rectangle<float> panel(b.getX() + 30, b.getY() + 50, b.getWidth() - 60, b.getHeight() - 80);
+    ColourGradient panelGrad(Colour(0xff2a2520), panel.getCentreX(), panel.getY(),
+                              Colour(0xff1a1510), panel.getCentreX(), panel.getBottom(), false);
+    g.setGradientFill(panelGrad);
+    g.fillRoundedRectangle(panel, 8.0f);
+    
+    // Panel border (gold)
+    g.setColour(Colour(0xffC8A060));
+    g.drawRoundedRectangle(panel, 8.0f, 2.5f);
+    
+    // Amp grill cloth texture (bottom section hint)
+    Rectangle<float> grill(panel.getX() + 10, panel.getBottom() - 40, panel.getWidth() - 20, 30);
+    g.setColour(Colour(0xff0a0a0a));
+    g.fillRoundedRectangle(grill, 4.0f);
+    g.setColour(Colour(0xff1a1a1a));
+    for (int i = 0; i < 100; ++i)
+    {
+        int x = (int)grill.getX() + (i * 12);
+        g.drawLine((float)x, grill.getY(), (float)x, grill.getBottom(), 1.0f);
     }
 }
+
 
 void GuitarPedalRackEditor::resized()
 {
-    auto bounds = getLocalBounds();
+    auto area = getLocalBounds();
     
-    // Top toolbar (60px)
-    topToolbar.setBounds(bounds.removeFromTop(60));
-    auto toolbarArea = topToolbar.getLocalBounds().reduced(10, 10);
-    brandLabel.setBounds(toolbarArea.removeFromLeft(250));
-    fileButton.setBounds(toolbarArea.removeFromLeft(70).reduced(2));
-    editButton.setBounds(toolbarArea.removeFromLeft(70).reduced(2));
-    settingsButton.setBounds(toolbarArea.removeFromLeft(90).reduced(2));
-    savePresetButton.setBounds(toolbarArea.removeFromRight(80).reduced(2));
-    toolbarArea.removeFromRight(10);
-    presetNameLabel.setBounds(toolbarArea);
+    // Title
+    titleLabel.setBounds(0, 10, getWidth(), 50);
     
-    // Bottom status bar (50px)
-    bottomStatusBar.setBounds(bounds.removeFromBottom(50));
-    auto statusArea = bottomStatusBar.getLocalBounds().reduced(10, 8);
-    undoButton.setBounds(statusArea.removeFromLeft(40).reduced(2));
-    redoButton.setBounds(statusArea.removeFromLeft(40).reduced(2));
-    statusArea.removeFromLeft(10);
-    statusLabel.setBounds(statusArea.removeFromLeft(200));
-    liveModeButton.setBounds(statusArea.removeFromRight(90).reduced(2));
-    statusArea.removeFromRight(10);
-    cpuLabel.setBounds(statusArea.removeFromRight(80));
+    // CPU monitor
+    cpuLabel.setBounds(getWidth() - 150, 20, 140, 25);
     
-    // Right panel (300px)
-    rightPanel.setBounds(bounds.removeFromRight(300));
-    auto rightArea = rightPanel.getLocalBounds().reduced(15, 20);
-    globalControlsLabel.setBounds(rightArea.removeFromTop(30));
-    rightArea.removeFromTop(20);
-    inputGainLabel.setBounds(rightArea.removeFromTop(20));
-    inputGainSlider.setBounds(rightArea.removeFromTop(100).withSizeKeepingCentre(90, 90));
-    rightArea.removeFromTop(30);
-    outputGainLabel.setBounds(rightArea.removeFromTop(20));
-    outputGainSlider.setBounds(rightArea.removeFromTop(100).withSizeKeepingCentre(90, 90));
+    // Global controls
+    inputGain.setBounds(20, 120, 50, 260);
+    inputLabel.setBounds(10, 390, 70, 20);
     
-    // Center - Modular Rack View
-    rackView->setBounds(bounds);
+    outputGain.setBounds(getWidth() - 70, 120, 50, 260);
+    outputLabel.setBounds(getWidth() - 80, 390, 70, 20);
     
-    // Browser overlay (modal, centered)
-    if (overlayVisible)
-    {
-        browserOverlay.setBounds(getLocalBounds());
-        auto browserBounds = getLocalBounds().withSizeKeepingCentre(400, 500);
-        effectBrowser->setBounds(browserBounds);
-    }
+    // Pedal layout parameters
+    int pedalY = 450;
+    int pedalW = 220;
+    int pedalH = 250;
+    int spacing = 70;
+    int startX = (getWidth() - (pedalW * 3 + spacing * 2)) / 2;
+    int knobSize = 60;
+    int knobSpacing = 70;
+    
+    // === PEDAL 1: DEEP HEAT ===
+    int pedal1X = startX;
+    int knobY = pedalY + 70;
+    
+    deepHeatNameLabel.setBounds(pedal1X, pedalY + 20, pedalW, 30);
+    
+    deepHeatLED.setBounds(pedal1X + pedalW/2 - 10, pedalY + 55, 20, 20);
+    
+    deepHeatDrive.setBounds(pedal1X + 20, knobY, knobSize, knobSize);
+    driveLabel.setBounds(pedal1X + 15, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    deepHeatTone.setBounds(pedal1X + pedalW/2 - knobSize/2, knobY, knobSize, knobSize);
+    toneLabel.setBounds(pedal1X + pedalW/2 - knobSize/2 - 5, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    deepHeatLevel.setBounds(pedal1X + pedalW - knobSize - 20, knobY, knobSize, knobSize);
+    levelLabel.setBounds(pedal1X + pedalW - knobSize - 25, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    deepHeatBypass.setBounds(pedal1X + pedalW/2 - 50, pedalY + pedalH - 45, 100, 32);
+    
+    // === PEDAL 2: PULSE ===
+    int pedal2X = startX + pedalW + spacing;
+    
+    pulseNameLabel.setBounds(pedal2X, pedalY + 20, pedalW, 30);
+    
+    pulseLED.setBounds(pedal2X + pedalW/2 - 10, pedalY + 55, 20, 20);
+    
+    pulseRate.setBounds(pedal2X + 20, knobY, knobSize, knobSize);
+    rateLabel.setBounds(pedal2X + 15, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    pulseDepth.setBounds(pedal2X + pedalW/2 - knobSize/2, knobY, knobSize, knobSize);
+    depthLabel.setBounds(pedal2X + pedalW/2 - knobSize/2 - 5, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    pulseMix.setBounds(pedal2X + pedalW - knobSize - 20, knobY, knobSize, knobSize);
+    mixLabel.setBounds(pedal2X + pedalW - knobSize - 25, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    pulseBypass.setBounds(pedal2X + pedalW/2 - 50, pedalY + pedalH - 45, 100, 32);
+
+    
+    // === PEDAL 3: VOID ===
+    int pedal3X = startX + (pedalW + spacing) * 2;
+    
+    voidNameLabel.setBounds(pedal3X, pedalY + 20, pedalW, 30);
+    
+    voidLED.setBounds(pedal3X + pedalW/2 - 10, pedalY + 55, 20, 20);
+    
+    voidSize.setBounds(pedal3X + 20, knobY, knobSize, knobSize);
+    sizeLabel.setBounds(pedal3X + 15, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    voidDecay.setBounds(pedal3X + pedalW/2 - knobSize/2, knobY, knobSize, knobSize);
+    decayLabel.setBounds(pedal3X + pedalW/2 - knobSize/2 - 5, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    voidMix2.setBounds(pedal3X + pedalW - knobSize - 20, knobY, knobSize, knobSize);
+    mix2Label.setBounds(pedal3X + pedalW - knobSize - 25, knobY + knobSize + 5, knobSize + 10, 20);
+    
+    voidBypass.setBounds(pedal3X + pedalW/2 - 50, pedalY + pedalH - 45, 100, 32);
+    
+    // === AMP SECTION ===
+    int ampX = 100;
+    int ampY = 120;
+    int ampW = getWidth() - 200;
+    int ampH = 260;
+    
+    ampNameLabel.setBounds(ampX, ampY + 15, ampW, 35);
+    
+    channelLabel.setBounds(ampX + 30, ampY + 60, 80, 20);
+    ampChannel.setBounds(ampX + 30, ampY + 85, 140, 30);
+    
+    // Amp knobs - top row (EQ stack)
+    int ampKnobSize = 70;
+    int ampKnobY = ampY + 130;
+    int ampKnobSpacing = 95;
+    int ampStartX = ampX + ampW/2 - (ampKnobSpacing * 2);
+    
+    ampGain.setBounds(ampStartX, ampKnobY, ampKnobSize, ampKnobSize);
+    ampGainLabel.setBounds(ampStartX - 5, ampKnobY + ampKnobSize + 5, ampKnobSize + 10, 20);
+    
+    ampBass.setBounds(ampStartX + ampKnobSpacing, ampKnobY, ampKnobSize, ampKnobSize);
+    ampBassLabel.setBounds(ampStartX + ampKnobSpacing - 5, ampKnobY + ampKnobSize + 5, ampKnobSize + 10, 20);
+    
+    ampMid.setBounds(ampStartX + ampKnobSpacing * 2, ampKnobY, ampKnobSize, ampKnobSize);
+    ampMidLabel.setBounds(ampStartX + ampKnobSpacing * 2 - 5, ampKnobY + ampKnobSize + 5, ampKnobSize + 10, 20);
+    
+    ampTreble.setBounds(ampStartX + ampKnobSpacing * 3, ampKnobY, ampKnobSize, ampKnobSize);
+    ampTrebleLabel.setBounds(ampStartX + ampKnobSpacing * 3 - 5, ampKnobY + ampKnobSize + 5, ampKnobSize + 10, 20);
+    
+    ampPresence.setBounds(ampStartX + ampKnobSpacing * 4, ampKnobY, ampKnobSize, ampKnobSize);
+    ampPresenceLabel.setBounds(ampStartX + ampKnobSpacing * 4 - 10, ampKnobY + ampKnobSize + 5, ampKnobSize + 20, 20);
+    
+    // Master volume - larger, positioned separately
+    int masterSize = 85;
+    ampMaster.setBounds(ampX + ampW - masterSize - 50, ampKnobY - 5, masterSize, masterSize);
+    ampMasterLabel.setBounds(ampX + ampW - masterSize - 60, ampKnobY + masterSize, masterSize + 20, 20);
 }
 
-//==============================================================================
 void GuitarPedalRackEditor::timerCallback()
 {
-    try
-    {
-        updateCpuDisplay();
-        presetNameLabel.setText(audioProcessor.getCurrentPresetName(), dontSendNotification);
-    }
-    catch (...)
-    {
-        DBG("Exception in timerCallback");
-    }
-}
-
-void GuitarPedalRackEditor::updateCpuDisplay()
-{
-    float cpuUsage = audioProcessor.getDspCpuUsage();
-    cpuLabel.setText("CPU: " + String(cpuUsage, 1) + "%", dontSendNotification);
-    
-    // Color code CPU usage
-    if (cpuUsage < 50.0f)
-        cpuLabel.setColour(Label::textColourId, Colour(0xff66BB6A)); // Green
-    else if (cpuUsage < 75.0f)
-        cpuLabel.setColour(Label::textColourId, Colour(0xffFFC107)); // Yellow
-    else
-        cpuLabel.setColour(Label::textColourId, Colour(0xffF44336)); // Red
-}
-
-//==============================================================================
-void GuitarPedalRackEditor::showEffectBrowserOverlay()
-{
-    overlayVisible = true;
-    browserOverlay.setVisible(true);
-    browserOverlay.toFront(true);
-    resized();
-    repaint();
-}
-
-void GuitarPedalRackEditor::hideEffectBrowserOverlay()
-{
-    overlayVisible = false;
-    browserOverlay.setVisible(false);
-    repaint();
-}
-
-void GuitarPedalRackEditor::handleEffectSelected(EffectModule::EffectType type, const String& name)
-{
-    // Add effect to rack
-    rackView->addEffect(type, name);
-    
-    // Hide browser
-    hideEffectBrowserOverlay();
-    
-    // Show feedback
-    statusLabel.setText("Added: " + name, dontSendNotification);
+    float cpuUsage = audioProcessor.getCPUUsage();
+    cpuLabel.setText(String::formatted("CPU: %.1f%%", cpuUsage), dontSendNotification);
 }

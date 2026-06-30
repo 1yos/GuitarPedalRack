@@ -59,10 +59,14 @@ void EffectModule::drawPedalStyle(Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat().reduced(4.0f);
     
+    // ALWAYS draw a visible background for testing
+    g.setColour(Colours::red); // Bright red so we can see it!
+    g.fillRoundedRectangle(bounds, 8.0f);
+    
     // Background (darker when bypassed)
     Colour bgColor = bypassed ? Colour(0xff0A0A0A) : Colour(0xff1A1A1A);
     g.setColour(bgColor);
-    g.fillRoundedRectangle(bounds, 8.0f);
+    g.fillRoundedRectangle(bounds.reduced(2.0f), 8.0f);
     
     // Effect color accent stripe (top)
     auto accentBounds = bounds.removeFromTop(6.0f);

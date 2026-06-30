@@ -78,17 +78,8 @@ target_sources(${PROJECT_NAME} PRIVATE
     # State Management
     source/State/PresetManager.cpp
     source/State/PresetManager.h
-
     source/State/FactoryPresets.cpp
     source/State/PresetFormat.h
-    
-    # Modern Modular Rack UI
-    source/UI/EffectModule.cpp
-    source/UI/EffectModule.h
-    source/UI/ModularRackView.cpp
-    source/UI/ModularRackView.h
-    source/UI/EffectBrowser.cpp
-    source/UI/EffectBrowser.h
 )
 
 # Add include directories

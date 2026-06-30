@@ -19,8 +19,8 @@ ModularRackView::ModularRackView(AudioProcessorValueTreeState& state)
         if (onAddEffectClicked) onAddEffectClicked();
     };
     
-    // Build default chain
-    buildDefaultChain();
+    // DON'T build default chain automatically - let editor do it when ready
+    // buildDefaultChain();
 }
 
 //==============================================================================
@@ -66,7 +66,13 @@ void ModularRackView::addEffect(EffectModule::EffectType type, const String& dis
     effectModules.add(module);
     contentComponent.addAndMakeVisible(module);
     
+    // Force layout and repaint
     layoutEffects();
+    contentComponent.repaint();
+    viewport.repaint();
+    repaint();
+    
+    DBG("Added effect: " + displayName + ", total effects: " + String(effectModules.size()));
     
     if (onEffectAdded)
         onEffectAdded(type);
