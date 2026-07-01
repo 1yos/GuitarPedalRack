@@ -85,6 +85,9 @@ target_sources(${PROJECT_NAME} PRIVATE
     source/State/PresetManager.h
     source/State/FactoryPresets.cpp
     source/State/PresetFormat.h
+    
+    # Testing (optional, for development)
+    source/Testing/PerformanceTest.h
 )
 
 # Add include directories
