@@ -1,7 +1,8 @@
 #pragma once
 
 #include "JuceHeader.h"
-#include "DSP/SignalChain.h"
+#include "DSP/SmartSignalChain.h"
+#include "DSP/EffectLibrary.h"
 #include "State/PresetManager.h"
 
 // Include all effect modules
@@ -66,8 +67,8 @@ public:
     //==============================================================================
     // Signal Chain Access
     
-    SignalChain& getSignalChain() { return signalChain; }
-    const SignalChain& getSignalChain() const { return signalChain; }
+    SmartSignalChain& getSignalChain() { return smartSignalChain; }
+    const SmartSignalChain& getSignalChain() const { return smartSignalChain; }
     
     /** Builds a default signal chain */
     void buildDefaultChain();
@@ -106,6 +107,13 @@ public:
 
     float getDspCpuUsage() const { return dspCpuUsage.load(); }
     float getCPUUsage() const { return dspCpuUsage.load(); } // Alias for editor
+    
+    //==============================================================================
+    // Smart Chain Statistics
+    
+    int getNumActiveEffects() const { return smartSignalChain.getNumActiveEffects(); }
+    int getTotalEffects() const { return smartSignalChain.getNumEffects(); }
+    float getSmartChainCPU() const { return smartSignalChain.getCPUUsage(); }
 
 private:
     //==============================================================================
@@ -114,7 +122,7 @@ private:
     
     //==============================================================================
     // Core components
-    SignalChain signalChain;
+    SmartSignalChain smartSignalChain;
     PresetManager presetManager;
     
     // Global parameters

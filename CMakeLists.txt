@@ -40,6 +40,11 @@ target_sources(${PROJECT_NAME} PRIVATE
     source/DSP/AudioModule.h
     source/DSP/SignalChain.cpp
     source/DSP/SignalChain.h
+    source/DSP/SmartSignalChain.cpp
+    source/DSP/SmartSignalChain.h
+    source/DSP/EffectLibrary.cpp
+    source/DSP/EffectLibrary.h
+    source/DSP/SIMDProcessor.h
     
     # Dynamics
     source/DSP/Dynamics/NoiseGate.cpp

@@ -311,7 +311,7 @@ void GuitarPedalRackProcessor::changeProgramName(int index, const String& newNam
 //==============================================================================
 void GuitarPedalRackProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    signalChain.prepare(sampleRate, samplesPerBlock);
+    smartSignalChain.prepare(sampleRate, samplesPerBlock);
     
     // Prepare parameter smoothing
     smoothedInputGain.reset(sampleRate, 0.05);  // 50ms ramp
@@ -319,11 +319,13 @@ void GuitarPedalRackProcessor::prepareToPlay(double sampleRate, int samplesPerBl
     
     smoothedInputGain.setCurrentAndTargetValue(dbToLinear(inputGainDb));
     smoothedOutputGain.setCurrentAndTargetValue(dbToLinear(outputGainDb));
+    
+    DBG("SmartSignalChain prepared with " + String(smartSignalChain.getNumEffects()) + " effects");
 }
 
 void GuitarPedalRackProcessor::releaseResources()
 {
-    signalChain.reset();
+    smartSignalChain.reset();
 }
 
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -391,8 +393,8 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
         }
     }
     
-    // Process through signal chain
-    signalChain.process(buffer);
+    // Process through smart signal chain
+    smartSignalChain.process(buffer);
     
     // Apply smoothed output gain
     auto* outputGainParam = apvts.getRawParameterValue("globalOutputGain");
@@ -426,6 +428,11 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     float usagePercent = 0.0f;
     if (blockDurationMicros > 0.0)
         usagePercent = (float)((elapsedMicros / blockDurationMicros) * 100.0);
+    
+    // Smooth it with an exponential moving average (EMA)
+    // Combine with SmartChain CPU tracking
+    float smartChainCPU = smartSignalChain.getCPUUsage() * 100.0f;
+    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + (usagePercent + smartChainCPU) * 0.025f);
     
     // Smooth it with an exponential moving average (EMA)
     dspCpuUsage.store(dspCpuUsage.load() * 0.95f + usagePercent * 0.05f);
@@ -477,30 +484,32 @@ void GuitarPedalRackProcessor::setStateInformation(const void* data, int sizeInB
 //==============================================================================
 void GuitarPedalRackProcessor::buildDefaultChain()
 {
-    signalChain.clearChain();
+    smartSignalChain.clearAllEffects();
     
     // Build complete signal chain:
     // Gate → Overdrive → Chorus → Amp → Reverb → Cabinet
-    signalChain.addModule(std::make_unique<NoiseGate>());
-    signalChain.addModule(std::make_unique<TubeOverdrive>());  // Deep Heat
-    signalChain.addModule(std::make_unique<Chorus>());         // Pulse
-    signalChain.addModule(std::make_unique<AmpSimulator>());   // Alpha Amp
-    signalChain.addModule(std::make_unique<ReverbEffect>());   // Void
-    signalChain.addModule(std::make_unique<CabinetIR>());
+    smartSignalChain.addEffect(std::make_unique<NoiseGate>());
+    smartSignalChain.addEffect(std::make_unique<TubeOverdrive>());  // Deep Heat
+    smartSignalChain.addEffect(std::make_unique<Chorus>());         // Pulse
+    smartSignalChain.addEffect(std::make_unique<AmpSimulator>());   // Alpha Amp
+    smartSignalChain.addEffect(std::make_unique<ReverbEffect>());   // Void
+    smartSignalChain.addEffect(std::make_unique<CabinetIR>());
     
     currentPresetName = "Default Chain";
     
     // Connect parameters to modules
     connectParametersToSignalChain();
+    
+    DBG("Default chain built with " + String(smartSignalChain.getNumEffects()) + " effects");
 }
 
 void GuitarPedalRackProcessor::connectParametersToSignalChain()
 {
     // Connect parameters to modules by searching their types rather than hardcoding indices,
     // which allows the signal chain order to be rearranged dynamically!
-    for (int i = 0; i < signalChain.getNumModules(); ++i)
+    for (int i = 0; i < smartSignalChain.getNumEffects(); ++i)
     {
-        auto* module = signalChain.getModule(i);
+        auto* module = smartSignalChain.getEffect(i);
         if (module == nullptr) continue;
         
         if (module->getModuleType() == "NoiseGate")
@@ -549,11 +558,13 @@ void GuitarPedalRackProcessor::connectParametersToSignalChain()
             module->setParameterPointer("bypass", apvts.getRawParameterValue("cabBypass"));
         }
     }
+    
+    DBG("Parameters connected to " + String(smartSignalChain.getNumEffects()) + " effects");
 }
 
 void GuitarPedalRackProcessor::rebuildChain()
 {
-    signalChain.clearChain();
+    smartSignalChain.clearAllEffects();
     buildDefaultChain();
 }
 
