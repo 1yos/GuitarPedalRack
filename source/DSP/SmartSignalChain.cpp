@@ -96,6 +96,33 @@ void SmartSignalChain::prepare(double sampleRate, int samplesPerBlock)
     currentSampleRate = sampleRate;
     currentBlockSize = samplesPerBlock;
     
+    // DAY 7: Buffer Pool Pre-Allocation (Phase 1 Optimization)
+    // Pre-allocate buffers to eliminate real-time allocations
+    
+    // Allocate buffers for thread pool (2 per thread)
+    int numBuffersForThreads = numThreads * 2;
+    for (int i = 0; i < numBuffersForThreads; ++i)
+    {
+        auto* buffer = bufferPool.acquire(2, samplesPerBlock);
+        if (buffer)
+            bufferPool.release(buffer);  // Return to pool as available
+    }
+    
+    // Pre-allocate for common size variations
+    // Some effects may need 2x or 0.5x buffer sizes
+    for (int i = 0; i < 4; ++i)
+    {
+        auto* buffer2x = bufferPool.acquire(2, samplesPerBlock * 2);
+        if (buffer2x)
+            bufferPool.release(buffer2x);
+            
+        auto* bufferHalf = bufferPool.acquire(2, samplesPerBlock / 2);
+        if (bufferHalf)
+            bufferPool.release(bufferHalf);
+    }
+    
+    DBG("Buffer pool pre-allocated: " + String(numBuffersForThreads + 8) + " buffers");
+    
     // Prepare all effects
     for (auto& slot : effects)
     {
