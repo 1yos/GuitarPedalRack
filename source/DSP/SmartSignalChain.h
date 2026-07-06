@@ -88,6 +88,33 @@ public:
     /** Check if parallel processing is enabled */
     bool isParallelProcessingEnabled() const { return parallelProcessingEnabled; }
     
+    /** Set number of threads for parallel processing (0 = auto-detect) */
+    void setNumThreads(int numThreads);
+    
+    /** Get number of threads */
+    int getNumThreads() const { return numThreads; }
+    
+    /** Set minimum effects required for parallel processing */
+    void setMinEffectsForParallel(int minEffects) { minEffectsForParallel = minEffects; }
+    
+    /** Get minimum effects for parallel */
+    int getMinEffectsForParallel() const { return minEffectsForParallel; }
+    
+    /** Set CPU threshold for enabling parallel processing */
+    void setParallelThreshold(float threshold) { parallelThreshold = jlimit(0.0f, 1.0f, threshold); }
+    
+    /** Get parallel threshold */
+    float getParallelThreshold() const { return parallelThreshold; }
+    
+    /** Enable/disable adaptive threading */
+    void setAdaptiveThreading(bool enabled) { adaptiveThreading = enabled; }
+    
+    /** Check if adaptive threading is enabled */
+    bool isAdaptiveThreadingEnabled() const { return adaptiveThreading; }
+    
+    /** Get threading efficiency (0.0 - 1.0) */
+    float getThreadingEfficiency() const;
+    
     //==============================================================================
     // Serialization
     
@@ -143,6 +170,28 @@ private:
     // Parallel Processing
     bool parallelProcessingEnabled = false;
     std::unique_ptr<ThreadPool> threadPool;
+    int numThreads = 0;  // 0 = auto-detect
+    int minEffectsForParallel = 6;
+    float parallelThreshold = 0.5f;  // Enable at 50% CPU
+    bool adaptiveThreading = true;
+    
+    // Threading statistics
+    std::atomic<float> threadingEfficiency{1.0f};
+    std::atomic<int64_t> serialProcessingTime{0};
+    std::atomic<int64_t> parallelProcessingTime{0};
+    
+    //==============================================================================
+    // Effect Grouping for Parallel Processing
+    struct EffectGroup
+    {
+        std::vector<int> effectIndices;
+        float estimatedCPU = 0.0f;
+    };
+    
+    std::vector<EffectGroup> createEffectGroups();
+    void processSerial(AudioBuffer<float>& buffer);
+    void processParallelGroups(AudioBuffer<float>& buffer, const std::vector<EffectGroup>& groups);
+    bool shouldUseParallelProcessing() const;
     
     //==============================================================================
     // Performance Monitoring

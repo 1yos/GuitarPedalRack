@@ -5,8 +5,15 @@
 //==============================================================================
 SmartSignalChain::SmartSignalChain()
 {
-    // Initialize thread pool for parallel processing (4 threads)
-    threadPool = std::make_unique<ThreadPool>(4);
+    // Initialize thread pool for parallel processing
+    // Use N-1 cores (leave one for UI/system)
+    int systemCores = SystemStats::getNumCpus();
+    int idealThreads = jmax(1, systemCores - 1);
+    
+    threadPool = std::make_unique<ThreadPool>(idealThreads);
+    numThreads = idealThreads;
+    
+    DBG("SmartSignalChain initialized with " + String(idealThreads) + " threads");
 }
 
 SmartSignalChain::~SmartSignalChain()
@@ -97,62 +104,7 @@ void SmartSignalChain::prepare(double sampleRate, int samplesPerBlock)
     }
 }
 
-void SmartSignalChain::process(AudioBuffer<float>& buffer)
-{
-    if (effects.empty())
-        return;
-    
-    // Start CPU timing
-    auto processingStart = std::chrono::high_resolution_clock::now();
-    
-    int activeCount = 0;
-    float totalCPU = 0.0f;
-    
-    // Process each effect
-    for (auto& slot : effects)
-    {
-        if (!slot->effect)
-            continue;
-        
-        // Check if effect should be bypassed
-        if (slot->isBypassed.load())
-            continue;
-        
-        // Smart optimization: check if input is silent
-        if (autoOptimizationEnabled && isSilent(buffer))
-        {
-            slot->silentFrameCount++;
-            
-            // After 10 silent frames, mark as inactive
-            if (slot->silentFrameCount > 10)
-            {
-                slot->isActive.store(false);
-                continue;
-            }
-        }
-        else
-        {
-            slot->silentFrameCount = 0;
-            slot->isActive.store(true);
-        }
-        
-        // Process the effect with CPU monitoring
-        processSingleEffect(*slot, buffer);
-        
-        activeCount++;
-        totalCPU += slot->cpuUsage.load();
-    }
-    
-    // Update global stats
-    numActiveEffects.store(activeCount);
-    currentCPUUsage.store(totalCPU);
-    
-    // Optimize chain if needed
-    if (autoOptimizationEnabled && currentCPUUsage.load() > maxCPUUsage)
-    {
-        optimizeChain();
-    }
-}
+// Process method is now at the end of the file with parallel processing support
 
 void SmartSignalChain::reset()
 {
@@ -338,5 +290,251 @@ void SmartSignalChain::BufferPool::release(AudioBuffer<float>* buffer)
     {
         const SpinLock::ScopedLockType sl(lock);
         available.push_back(buffer);
+    }
+}
+
+//==============================================================================
+// Multi-Threading Configuration
+
+void SmartSignalChain::setNumThreads(int newNumThreads)
+{
+    if (newNumThreads <= 0)
+    {
+        // Auto-detect
+        int systemCores = SystemStats::getNumCpus();
+        numThreads = jmax(1, systemCores - 1);
+    }
+    else
+    {
+        numThreads = jlimit(1, 16, newNumThreads);
+    }
+    
+    // Recreate thread pool with new size
+    threadPool = std::make_unique<ThreadPool>(numThreads);
+    
+    DBG("Thread pool resized to " + String(numThreads) + " threads");
+}
+
+float SmartSignalChain::getThreadingEfficiency() const
+{
+    return threadingEfficiency.load();
+}
+
+//==============================================================================
+// Effect Grouping for Parallel Processing
+
+std::vector<SmartSignalChain::EffectGroup> SmartSignalChain::createEffectGroups()
+{
+    std::vector<EffectGroup> groups;
+    
+    if (effects.empty())
+        return groups;
+    
+    // Group effects by estimated CPU cost
+    // Goal: Balance load across available threads
+    
+    int numGroups = jmin(numThreads, static_cast<int>(effects.size()));
+    groups.resize(numGroups);
+    
+    // Simple round-robin distribution
+    // TODO: Implement smarter grouping based on actual CPU measurements
+    for (int i = 0; i < static_cast<int>(effects.size()); ++i)
+    {
+        int groupIndex = i % numGroups;
+        groups[groupIndex].effectIndices.push_back(i);
+        groups[groupIndex].estimatedCPU += effects[i]->cpuUsage.load();
+    }
+    
+    return groups;
+}
+
+bool SmartSignalChain::shouldUseParallelProcessing() const
+{
+    // Don't use parallel processing if:
+    // 1. Not enabled
+    // 2. Too few effects
+    // 3. CPU usage too low (overhead not worth it)
+    
+    if (!parallelProcessingEnabled)
+        return false;
+    
+    if (static_cast<int>(effects.size()) < minEffectsForParallel)
+        return false;
+    
+    if (adaptiveThreading && currentCPUUsage.load() < parallelThreshold)
+        return false;
+    
+    return true;
+}
+
+//==============================================================================
+// Serial Processing (original method)
+
+void SmartSignalChain::processSerial(AudioBuffer<float>& buffer)
+{
+    auto startTime = std::chrono::high_resolution_clock::now();
+    
+    int activeCount = 0;
+    float totalCPU = 0.0f;
+    
+    // Process each effect sequentially
+    for (auto& slot : effects)
+    {
+        if (!slot->effect)
+            continue;
+        
+        if (slot->isBypassed.load())
+            continue;
+        
+        // Smart optimization: check if input is silent
+        if (autoOptimizationEnabled && isSilent(buffer))
+        {
+            slot->silentFrameCount++;
+            
+            if (slot->silentFrameCount > 10)
+            {
+                slot->isActive.store(false);
+                continue;
+            }
+        }
+        else
+        {
+            slot->silentFrameCount = 0;
+            slot->isActive.store(true);
+        }
+        
+        // Process the effect with CPU monitoring
+        processSingleEffect(*slot, buffer);
+        
+        activeCount++;
+        totalCPU += slot->cpuUsage.load();
+    }
+    
+    // Update global stats
+    numActiveEffects.store(activeCount);
+    currentCPUUsage.store(totalCPU);
+    
+    auto endTime = std::chrono::high_resolution_clock::now();
+    serialProcessingTime.store(
+        std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count()
+    );
+}
+
+//==============================================================================
+// Parallel Processing
+
+void SmartSignalChain::processParallelGroups(AudioBuffer<float>& buffer, 
+                                              const std::vector<EffectGroup>& groups)
+{
+    auto startTime = std::chrono::high_resolution_clock::now();
+    
+    std::atomic<int> activeCount{0};
+    std::atomic<int> totalCPUInt{0};  // Use int for atomic, convert to float later
+    
+    // Create jobs for each group
+    std::vector<std::function<void()>> jobs;
+    
+    for (const auto& group : groups)
+    {
+        jobs.push_back([&, group]() {
+            int localActive = 0;
+            float localCPU = 0.0f;
+            
+            // Process all effects in this group
+            for (int idx : group.effectIndices)
+            {
+                if (idx < 0 || idx >= static_cast<int>(effects.size()))
+                    continue;
+                
+                auto& slot = effects[idx];
+                
+                if (!slot->effect || slot->isBypassed.load())
+                    continue;
+                
+                // Check silence
+                if (autoOptimizationEnabled && isSilent(buffer))
+                {
+                    slot->silentFrameCount++;
+                    if (slot->silentFrameCount > 10)
+                    {
+                        slot->isActive.store(false);
+                        continue;
+                    }
+                }
+                else
+                {
+                    slot->silentFrameCount = 0;
+                    slot->isActive.store(true);
+                }
+                
+                // Process effect
+                processSingleEffect(*slot, buffer);
+                
+                localActive++;
+                localCPU += slot->cpuUsage.load();
+            }
+            
+            // Update atomic counters
+            activeCount += localActive;
+            totalCPUInt += static_cast<int>(localCPU * 100.0f);  // Store as int percentage
+        });
+    }
+    
+    // Execute jobs in parallel
+    for (auto& job : jobs)
+    {
+        threadPool->addJob(std::move(job));
+    }
+    
+    // Wait for all jobs to complete
+    while (threadPool->getNumJobs() > 0)
+    {
+        Thread::sleep(0);  // Yield to allow threads to process
+    }
+    
+    // Update global stats
+    numActiveEffects.store(activeCount.load());
+    currentCPUUsage.store(static_cast<float>(totalCPUInt.load()) / 100.0f);
+    
+    auto endTime = std::chrono::high_resolution_clock::now();
+    int64_t parallelTime = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+    parallelProcessingTime.store(parallelTime);
+    
+    // Calculate efficiency
+    int64_t serialTime = serialProcessingTime.load();
+    if (serialTime > 0 && parallelTime > 0)
+    {
+        float efficiency = static_cast<float>(serialTime) / static_cast<float>(parallelTime);
+        threadingEfficiency.store(efficiency);
+    }
+}
+
+//==============================================================================
+// Modified process() to use parallel processing when beneficial
+
+void SmartSignalChain::process(AudioBuffer<float>& buffer)
+{
+    if (effects.empty())
+        return;
+    
+    // Decide: serial or parallel?
+    if (shouldUseParallelProcessing())
+    {
+        // Create effect groups
+        auto groups = createEffectGroups();
+        
+        // Process in parallel
+        processParallelGroups(buffer, groups);
+    }
+    else
+    {
+        // Process serially
+        processSerial(buffer);
+    }
+    
+    // Optimize chain if needed
+    if (autoOptimizationEnabled && currentCPUUsage.load() > maxCPUUsage)
+    {
+        optimizeChain();
     }
 }
