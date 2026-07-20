@@ -273,13 +273,33 @@ void PresetManager::loadUserPresets()
         if (xml != nullptr && xml->hasTagName("GUITAR_PEDAL_RACK_PRESET"))
         {
             ChainPreset preset;
-            preset.name = xml->getStringAttribute("name");
-            preset.category = xml->getStringAttribute("category");
+            preset.name        = xml->getStringAttribute("name");
+            preset.category    = xml->getStringAttribute("category");
             preset.description = xml->getStringAttribute("description");
-            preset.author = xml->getStringAttribute("author");
-            preset.dateCreated = file.getCreationTime();
-            preset.dateModified = file.getLastModificationTime();
+            preset.author      = xml->getStringAttribute("author");
+            preset.dateCreated    = file.getCreationTime();
+            preset.dateModified   = file.getLastModificationTime();
             
+            // ── Restore module chain ────────────────────────────────────────
+            if (auto* modulesXml = xml->getChildByName("MODULES"))
+            {
+                for (int i = 0; i < modulesXml->getNumChildElements(); ++i)
+                {
+                    if (auto* mXml = modulesXml->getChildElement(i))
+                    {
+                        if (mXml->hasTagName("MODULE"))
+                        {
+                            ModulePreset m;
+                            m.moduleType  = mXml->getStringAttribute("type");
+                            m.bypassed    = mXml->getBoolAttribute("bypassed", false);
+                            m.wetDryMix   = (float)mXml->getDoubleAttribute("mix", 1.0);
+                            preset.modules.add(m);
+                        }
+                    }
+                }
+            }
+            
+            // ── Restore parameter values ────────────────────────────────────
             if (auto* paramsXml = xml->getChildByName("PARAMETERS"))
             {
                 for (int i = 0; i < paramsXml->getNumChildElements(); ++i)
@@ -288,8 +308,8 @@ void PresetManager::loadUserPresets()
                     {
                         if (pXml->hasTagName("PARAM"))
                         {
-                            String id = pXml->getStringAttribute("id");
-                            float val = (float)pXml->getDoubleAttribute("value");
+                            String id  = pXml->getStringAttribute("id");
+                            float  val = (float)pXml->getDoubleAttribute("value");
                             preset.parameterValues[id] = val;
                         }
                     }
@@ -317,16 +337,27 @@ bool PresetManager::savePreset(const ChainPreset& preset)
     File presetFile = userPresetFolder.getChildFile(preset.name + ".gpr");
     
     std::unique_ptr<XmlElement> xml(new XmlElement("GUITAR_PEDAL_RACK_PRESET"));
-    xml->setAttribute("name", preset.name);
-    xml->setAttribute("category", preset.category);
+    xml->setAttribute("name",        preset.name);
+    xml->setAttribute("category",    preset.category);
     xml->setAttribute("description", preset.description);
-    xml->setAttribute("author", preset.author);
+    xml->setAttribute("author",      preset.author);
     
+    // ── Serialize module chain ──────────────────────────────────────────────
+    auto* modulesXml = xml->createNewChildElement("MODULES");
+    for (const auto& m : preset.modules)
+    {
+        auto* mXml = modulesXml->createNewChildElement("MODULE");
+        mXml->setAttribute("type",     m.moduleType);
+        mXml->setAttribute("bypassed", (int)m.bypassed);
+        mXml->setAttribute("mix",      m.wetDryMix);
+    }
+    
+    // ── Serialize parameter values ──────────────────────────────────────────
     auto* paramsXml = xml->createNewChildElement("PARAMETERS");
     for (const auto& pair : preset.parameterValues)
     {
         auto* pXml = paramsXml->createNewChildElement("PARAM");
-        pXml->setAttribute("id", pair.first);
+        pXml->setAttribute("id",    pair.first);
         pXml->setAttribute("value", pair.second);
     }
     
@@ -395,13 +426,12 @@ StringArray PresetManager::getAllTags() const
 StringArray PresetManager::getAllCategories() const
 {
     StringArray categories;
-    categories.add("Rock");
-    categories.add("Metal");
-    categories.add("Blues");
-    categories.add("Jazz");
-    categories.add("Clean");
-    categories.add("Lead");
-    categories.add("Rhythm");
+    for (const auto& preset : library.presets)
+    {
+        if (preset.category.isNotEmpty() && !categories.contains(preset.category))
+            categories.add(preset.category);
+    }
+    categories.sort(true);
     return categories;
 }
 
@@ -421,8 +451,26 @@ ChainPreset PresetManager::createCleanBluesPreset()
     preset.dateCreated = Time::getCurrentTime();
     preset.dateModified = preset.dateCreated;
     
-    // TODO: Add actual module configurations
-    // For now, define the chain structure
+    // Add effect modules
+    ModulePreset comp;
+    comp.moduleType = "Compressor";
+    comp.bypassed = false;
+    preset.modules.add(comp);
+    
+    ModulePreset tubeDrive;
+    tubeDrive.moduleType = "TubeOverdrive";
+    tubeDrive.bypassed = false;
+    preset.modules.add(tubeDrive);
+    
+    ModulePreset delay;
+    delay.moduleType = "Delay";
+    delay.bypassed = false;
+    preset.modules.add(delay);
+    
+    ModulePreset reverb;
+    reverb.moduleType = "Reverb";
+    reverb.bypassed = false;
+    preset.modules.add(reverb);
     
     return preset;
 }
@@ -440,6 +488,27 @@ ChainPreset PresetManager::createClassicRockPreset()
     preset.dateCreated = Time::getCurrentTime();
     preset.dateModified = preset.dateCreated;
     
+    // Add effect modules
+    ModulePreset tubeDrive;
+    tubeDrive.moduleType = "TubeOverdrive";
+    tubeDrive.bypassed = false;
+    preset.modules.add(tubeDrive);
+    
+    ModulePreset dist;
+    dist.moduleType = "Distortion";
+    dist.bypassed = false;
+    preset.modules.add(dist);
+    
+    ModulePreset delay;
+    delay.moduleType = "TapeDelay";
+    delay.bypassed = false;
+    preset.modules.add(delay);
+    
+    ModulePreset reverb;
+    reverb.moduleType = "SpringReverb";
+    reverb.bypassed = false;
+    preset.modules.add(reverb);
+    
     return preset;
 }
 
@@ -455,6 +524,27 @@ ChainPreset PresetManager::createHighGainMetalPreset()
     preset.category = "Metal";
     preset.dateCreated = Time::getCurrentTime();
     preset.dateModified = preset.dateCreated;
+    
+    // Add effect modules
+    ModulePreset gate;
+    gate.moduleType = "NoiseGate";
+    gate.bypassed = false;
+    preset.modules.add(gate);
+    
+    ModulePreset dist;
+    dist.moduleType = "MetalZone";
+    dist.bypassed = false;
+    preset.modules.add(dist);
+    
+    ModulePreset eq;
+    eq.moduleType = "EQ";
+    eq.bypassed = false;
+    preset.modules.add(eq);
+    
+    ModulePreset delay;
+    delay.moduleType = "Delay";
+    delay.bypassed = false;
+    preset.modules.add(delay);
     
     return preset;
 }
@@ -472,6 +562,22 @@ ChainPreset PresetManager::createCrunchRhythmPreset()
     preset.dateCreated = Time::getCurrentTime();
     preset.dateModified = preset.dateCreated;
     
+    // Add effect modules
+    ModulePreset gate;
+    gate.moduleType = "NoiseGate";
+    gate.bypassed = false;
+    preset.modules.add(gate);
+    
+    ModulePreset od;
+    od.moduleType = "TubeScreamer808";
+    od.bypassed = false;
+    preset.modules.add(od);
+    
+    ModulePreset reverb;
+    reverb.moduleType = "RoomReverb";
+    reverb.bypassed = false;
+    preset.modules.add(reverb);
+    
     return preset;
 }
 
@@ -487,6 +593,32 @@ ChainPreset PresetManager::createSmoothLeadPreset()
     preset.category = "Lead";
     preset.dateCreated = Time::getCurrentTime();
     preset.dateModified = preset.dateCreated;
+    
+    // Add effect modules
+    ModulePreset comp;
+    comp.moduleType = "OpticalCompressor";
+    comp.bypassed = false;
+    preset.modules.add(comp);
+    
+    ModulePreset od;
+    od.moduleType = "KlonCentaur";
+    od.bypassed = false;
+    preset.modules.add(od);
+    
+    ModulePreset chorus;
+    chorus.moduleType = "Chorus";
+    chorus.bypassed = false;
+    preset.modules.add(chorus);
+    
+    ModulePreset delay;
+    delay.moduleType = "AnalogDelay";
+    delay.bypassed = false;
+    preset.modules.add(delay);
+    
+    ModulePreset reverb;
+    reverb.moduleType = "PlateReverb";
+    reverb.bypassed = false;
+    preset.modules.add(reverb);
     
     return preset;
 }

@@ -65,6 +65,8 @@ public:
     void setDetectionMode(DetectionMode newMode);
     DetectionMode getDetectionMode() const { return detectionMode; }
 
+    float getGainReduction() const { return lastGainReduction.load(); }
+
     //==============================================================================
     // AudioModule overrides
     
@@ -78,6 +80,9 @@ public:
 
 protected:
     void processInternal(AudioBuffer<float>& buffer) override;
+
+private:
+    std::atomic<float> lastGainReduction { 0.0f };
 
 private:
     //==============================================================================

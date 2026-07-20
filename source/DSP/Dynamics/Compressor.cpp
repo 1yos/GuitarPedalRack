@@ -77,6 +77,8 @@ void Compressor::processInternal(AudioBuffer<float>& buffer)
     
     if ((int)envelopeState.size() < numChannels)
         envelopeState.resize(numChannels, 0.0f);
+        
+    float maxGR = 0.0f;
     
     for (int channel = 0; channel < numChannels; ++channel)
     {
@@ -114,10 +116,14 @@ void Compressor::processInternal(AudioBuffer<float>& buffer)
             float gainReductionDb = computeGain(envelopeDb);
             float gainReduction = dbToLinear(gainReductionDb);
             
+            maxGR = std::max(maxGR, -gainReductionDb);
+            
             // Apply compression and makeup gain
             channelData[sample] = inputSample * gainReduction * makeupGain;
         }
     }
+    
+    lastGainReduction.store(maxGR);
 }
 
 float Compressor::computeGain(float inputLevelDb)
