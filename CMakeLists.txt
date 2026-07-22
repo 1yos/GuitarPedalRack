@@ -9,20 +9,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(../ParametricEQ/JUCE ${CMAKE_BINARY_DIR}/JUCE)
 
 juce_add_plugin(${PROJECT_NAME}
-    COMPANY_NAME "GuitarFX"
-    PRODUCT_NAME "Guitar Pedal Rack"
-    DESCRIPTION "Professional modular guitar effects plugin"
+    COMPANY_NAME "Aether Audio"
+    PRODUCT_NAME "Aether Guitar Pedal Rack"
+    DESCRIPTION "Professional boutique guitar pedalboard plugin"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
-    COPY_PLUGIN_AFTER_BUILD TRUE
-    PLUGIN_MANUFACTURER_CODE "GFXp"
-    PLUGIN_CODE "GPRk"
-    FORMATS VST3 AU Standalone
+    COPY_PLUGIN_AFTER_BUILD FALSE
+    PLUGIN_MANUFACTURER_CODE "AeAu"
+    PLUGIN_CODE "AGPr"
+    FORMATS VST3 Standalone
     VST3_CATEGORIES "Fx" "Guitar" "Distortion"
-    AU_MAIN_TYPE "kAudioUnitType_Effect"
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -310,7 +309,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0
 )
 
 if(MSVC)

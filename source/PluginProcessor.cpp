@@ -267,7 +267,7 @@ bool GuitarPedalRackProcessor::isMidiEffect() const
 
 double GuitarPedalRackProcessor::getTailLengthSeconds() const
 {
-    return 0.0;
+    return 3.0; // Reverb/delay tails need time to decay
 }
 
 int GuitarPedalRackProcessor::getNumPrograms()
@@ -445,13 +445,9 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     if (blockDurationMicros > 0.0)
         usagePercent = (float)((elapsedMicros / blockDurationMicros) * 100.0);
     
-    // Smooth it with an exponential moving average (EMA)
-    // Combine with SmartChain CPU tracking
+    // Smooth CPU with combined DSP chain contribution
     float smartChainCPU = smartSignalChain.getCPUUsage() * 100.0f;
-    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + (usagePercent + smartChainCPU) * 0.025f);
-    
-    // Smooth it with an exponential moving average (EMA)
-    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + usagePercent * 0.05f);
+    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + (usagePercent + smartChainCPU) * 0.05f);
 }
 
 //==============================================================================

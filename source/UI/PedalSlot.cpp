@@ -1,4 +1,4 @@
-#include "PedalSlot.h"
+﻿#include "PedalSlot.h"
 #include "Materials.h"
 #include "WornTextures.h"
 
@@ -590,34 +590,58 @@ juce::Colour PedalSlot::getEnclosureColor() const
 
 juce::String PedalSlot::getFirstKnobLabel() const
 {
-    // Effect-specific knob labels (matching common pedal layouts)
-    if (category.contains("Comp")) return "SUSTAIN";
-    if (category.contains("Drive") || category.contains("Dist")) return "GAIN";
-    if (category.contains("Delay")) return "TIME";
-    if (category.contains("Reverb")) return "DECAY";
-    if (category.contains("Mod") || category.contains("Chorus")) return "RATE";
-    if (category.contains("EQ")) return "LOW";
-    return "PARAM1";
+    juce::String n = effectName.toLowerCase();
+    if (n.contains("gate") || n.contains("noisegate")) return "THRESH";
+    if (n.contains("comp") || n.contains("compressor")) return "THRESH";
+    if (n.contains("limiter")) return "THRESH";
+    if (n.contains("overdrive") || n.contains("drive") || n.contains("distortion")
+        || n.contains("fuzz") || n.contains("rat") || n.contains("muff")) return "GAIN";
+    if (n.contains("delay") || n.contains("echo")) return "TIME";
+    if (n.contains("reverb") || n.contains("plate") || n.contains("spring") || n.contains("hall")) return "SIZE";
+    if (n.contains("chorus") || n.contains("flanger") || n.contains("phaser")
+        || n.contains("tremolo") || n.contains("vibrato")) return "RATE";
+    if (n.contains("tonestack") || n.contains("amp") || n.contains("eq")) return "BASS";
+    if (n.contains("cabinet") || n.contains("cab")) return "MIX";
+    if (n.contains("pitch") || n.contains("octav") || n.contains("whammy")) return "PITCH";
+    if (n.contains("wah") || n.contains("filter")) return "FREQ";
+    return "LEVEL";
 }
 
 juce::String PedalSlot::getSecondKnobLabel() const
 {
-    if (category.contains("Comp")) return "LEVEL";
-    if (category.contains("Drive") || category.contains("Dist")) return "TONE";
-    if (category.contains("Delay")) return "FEEDBACK";
-    if (category.contains("Reverb")) return "TONE";
-    if (category.contains("Mod") || category.contains("Chorus")) return "DEPTH";
-    if (category.contains("EQ")) return "MID";
-    return "PARAM2";
+    juce::String n = effectName.toLowerCase();
+    if (n.contains("gate") || n.contains("noisegate")) return "ATTACK";
+    if (n.contains("comp") || n.contains("compressor")) return "RATIO";
+    if (n.contains("limiter")) return "RELEASE";
+    if (n.contains("overdrive") || n.contains("drive") || n.contains("distortion")
+        || n.contains("fuzz") || n.contains("rat") || n.contains("muff")) return "TONE";
+    if (n.contains("delay") || n.contains("echo")) return "FDBK";
+    if (n.contains("reverb") || n.contains("plate") || n.contains("spring") || n.contains("hall")) return "DECAY";
+    if (n.contains("chorus") || n.contains("flanger") || n.contains("phaser")
+        || n.contains("tremolo") || n.contains("vibrato")) return "DEPTH";
+    if (n.contains("tonestack") || n.contains("amp") || n.contains("eq")) return "MID";
+    if (n.contains("cabinet") || n.contains("cab")) return "LO CUT";
+    if (n.contains("pitch") || n.contains("octav") || n.contains("whammy")) return "DIRECT";
+    if (n.contains("wah") || n.contains("filter")) return "Q";
+    return "TONE";
 }
 
 juce::String PedalSlot::getThirdKnobLabel() const
 {
-    if (category.contains("Comp")) return "BLEND";
-    if (category.contains("Drive") || category.contains("Dist")) return "LEVEL";
-    if (category.contains("Delay")) return "MIX";
-    if (category.contains("Reverb")) return "MIX";
-    if (category.contains("Mod") || category.contains("Chorus")) return "MIX";
-    if (category.contains("EQ")) return "HIGH";
-    return "PARAM3";
+    juce::String n = effectName.toLowerCase();
+    if (n.contains("gate") || n.contains("noisegate")) return "RELEASE";
+    if (n.contains("comp") || n.contains("compressor")) return "MAKEUP";
+    if (n.contains("limiter")) return "MAKEUP";
+    if (n.contains("overdrive") || n.contains("drive") || n.contains("distortion")
+        || n.contains("fuzz") || n.contains("rat") || n.contains("muff")) return "LEVEL";
+    if (n.contains("delay") || n.contains("echo")) return "MIX";
+    if (n.contains("reverb") || n.contains("plate") || n.contains("spring") || n.contains("hall")) return "MIX";
+    if (n.contains("chorus") || n.contains("flanger") || n.contains("phaser")
+        || n.contains("tremolo") || n.contains("vibrato")) return "MIX";
+    if (n.contains("tonestack") || n.contains("amp") || n.contains("eq")) return "TREBLE";
+    if (n.contains("cabinet") || n.contains("cab")) return "HI CUT";
+    if (n.contains("pitch") || n.contains("octav") || n.contains("whammy")) return "MIX";
+    if (n.contains("wah") || n.contains("filter")) return "MIX";
+    return "MIX";
 }
+

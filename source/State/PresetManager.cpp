@@ -1,4 +1,4 @@
-#include "PresetManager.h"
+﻿#include "PresetManager.h"
 
 PresetManager::PresetManager()
 {
@@ -280,7 +280,7 @@ void PresetManager::loadUserPresets()
             preset.dateCreated    = file.getCreationTime();
             preset.dateModified   = file.getLastModificationTime();
             
-            // ── Restore module chain ────────────────────────────────────────
+            // â”€â”€ Restore module chain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (auto* modulesXml = xml->getChildByName("MODULES"))
             {
                 for (int i = 0; i < modulesXml->getNumChildElements(); ++i)
@@ -299,7 +299,7 @@ void PresetManager::loadUserPresets()
                 }
             }
             
-            // ── Restore parameter values ────────────────────────────────────
+            // â”€â”€ Restore parameter values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (auto* paramsXml = xml->getChildByName("PARAMETERS"))
             {
                 for (int i = 0; i < paramsXml->getNumChildElements(); ++i)
@@ -342,7 +342,7 @@ bool PresetManager::savePreset(const ChainPreset& preset)
     xml->setAttribute("description", preset.description);
     xml->setAttribute("author",      preset.author);
     
-    // ── Serialize module chain ──────────────────────────────────────────────
+    // â”€â”€ Serialize module chain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto* modulesXml = xml->createNewChildElement("MODULES");
     for (const auto& m : preset.modules)
     {
@@ -352,7 +352,7 @@ bool PresetManager::savePreset(const ChainPreset& preset)
         mXml->setAttribute("mix",      m.wetDryMix);
     }
     
-    // ── Serialize parameter values ──────────────────────────────────────────
+    // â”€â”€ Serialize parameter values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto* paramsXml = xml->createNewChildElement("PARAMETERS");
     for (const auto& pair : preset.parameterValues)
     {
@@ -433,192 +433,4 @@ StringArray PresetManager::getAllCategories() const
     }
     categories.sort(true);
     return categories;
-}
-
-//==============================================================================
-// Factory Preset Implementations
-
-ChainPreset PresetManager::createCleanBluesPreset()
-{
-    ChainPreset preset;
-    preset.name = "Clean Blues";
-    preset.author = "Factory";
-    preset.description = "Warm clean tone with subtle compression, perfect for blues rhythm";
-    preset.tags.add("blues");
-    preset.tags.add("clean");
-    preset.tags.add("rhythm");
-    preset.category = "Blues";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    // Add effect modules
-    ModulePreset comp;
-    comp.moduleType = "Compressor";
-    comp.bypassed = false;
-    preset.modules.add(comp);
-    
-    ModulePreset tubeDrive;
-    tubeDrive.moduleType = "TubeOverdrive";
-    tubeDrive.bypassed = false;
-    preset.modules.add(tubeDrive);
-    
-    ModulePreset delay;
-    delay.moduleType = "Delay";
-    delay.bypassed = false;
-    preset.modules.add(delay);
-    
-    ModulePreset reverb;
-    reverb.moduleType = "Reverb";
-    reverb.bypassed = false;
-    preset.modules.add(reverb);
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createClassicRockPreset()
-{
-    ChainPreset preset;
-    preset.name = "Classic Rock Rhythm";
-    preset.author = "Factory";
-    preset.description = "AC/DC style crunch tone - perfect for power chords";
-    preset.tags.add("rock");
-    preset.tags.add("crunch");
-    preset.tags.add("rhythm");
-    preset.category = "Rock";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    // Add effect modules
-    ModulePreset tubeDrive;
-    tubeDrive.moduleType = "TubeOverdrive";
-    tubeDrive.bypassed = false;
-    preset.modules.add(tubeDrive);
-    
-    ModulePreset dist;
-    dist.moduleType = "Distortion";
-    dist.bypassed = false;
-    preset.modules.add(dist);
-    
-    ModulePreset delay;
-    delay.moduleType = "TapeDelay";
-    delay.bypassed = false;
-    preset.modules.add(delay);
-    
-    ModulePreset reverb;
-    reverb.moduleType = "SpringReverb";
-    reverb.bypassed = false;
-    preset.modules.add(reverb);
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createHighGainMetalPreset()
-{
-    ChainPreset preset;
-    preset.name = "Modern Metal";
-    preset.author = "Factory";
-    preset.description = "Tight high-gain tone for modern metal riffing";
-    preset.tags.add("metal");
-    preset.tags.add("high-gain");
-    preset.tags.add("rhythm");
-    preset.category = "Metal";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    // Add effect modules
-    ModulePreset gate;
-    gate.moduleType = "NoiseGate";
-    gate.bypassed = false;
-    preset.modules.add(gate);
-    
-    ModulePreset dist;
-    dist.moduleType = "MetalZone";
-    dist.bypassed = false;
-    preset.modules.add(dist);
-    
-    ModulePreset eq;
-    eq.moduleType = "EQ";
-    eq.bypassed = false;
-    preset.modules.add(eq);
-    
-    ModulePreset delay;
-    delay.moduleType = "Delay";
-    delay.bypassed = false;
-    preset.modules.add(delay);
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createCrunchRhythmPreset()
-{
-    ChainPreset preset;
-    preset.name = "Crunch Rhythm";
-    preset.author = "Factory";
-    preset.description = "Mid-gain crunch for classic rock rhythm playing";
-    preset.tags.add("rock");
-    preset.tags.add("crunch");
-    preset.tags.add("rhythm");
-    preset.category = "Rock";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    // Add effect modules
-    ModulePreset gate;
-    gate.moduleType = "NoiseGate";
-    gate.bypassed = false;
-    preset.modules.add(gate);
-    
-    ModulePreset od;
-    od.moduleType = "TubeScreamer808";
-    od.bypassed = false;
-    preset.modules.add(od);
-    
-    ModulePreset reverb;
-    reverb.moduleType = "RoomReverb";
-    reverb.bypassed = false;
-    preset.modules.add(reverb);
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createSmoothLeadPreset()
-{
-    ChainPreset preset;
-    preset.name = "Smooth Lead";
-    preset.author = "Factory";
-    preset.description = "Singing lead tone with compression and delay";
-    preset.tags.add("lead");
-    preset.tags.add("rock");
-    preset.tags.add("blues");
-    preset.category = "Lead";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    // Add effect modules
-    ModulePreset comp;
-    comp.moduleType = "OpticalCompressor";
-    comp.bypassed = false;
-    preset.modules.add(comp);
-    
-    ModulePreset od;
-    od.moduleType = "KlonCentaur";
-    od.bypassed = false;
-    preset.modules.add(od);
-    
-    ModulePreset chorus;
-    chorus.moduleType = "Chorus";
-    chorus.bypassed = false;
-    preset.modules.add(chorus);
-    
-    ModulePreset delay;
-    delay.moduleType = "AnalogDelay";
-    delay.bypassed = false;
-    preset.modules.add(delay);
-    
-    ModulePreset reverb;
-    reverb.moduleType = "PlateReverb";
-    reverb.bypassed = false;
-    preset.modules.add(reverb);
-    
-    return preset;
 }
