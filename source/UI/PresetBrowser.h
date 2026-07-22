@@ -31,6 +31,9 @@ public:
     // Set preset manager
     void setPresetManager(PresetManager* manager);
     
+    // Mark which preset is currently loaded (shows checkmark highlight)
+    void setActivePreset(const juce::String& name);
+    
     // Callbacks
     std::function<void(const juce::String& presetName)> onPresetSelected;
     std::function<void()> onSaveNewPreset;
@@ -47,8 +50,9 @@ private:
         void mouseDown(const juce::MouseEvent& e) override;
         
         ChainPreset preset;
-        bool hovered = false;
+        bool hovered  = false;
         bool isFactory = true;
+        bool isActive  = false;   // true = currently loaded preset
         
         std::function<void(const ChainPreset&)> onClick;
         std::function<void(const ChainPreset&)> onDelete;
@@ -66,6 +70,7 @@ private:
     
     juce::String currentCategory = "All";
     juce::String searchText;
+    juce::String activePresetName;  // currently loaded preset
     
     void loadPresets();
     void filterPresets();

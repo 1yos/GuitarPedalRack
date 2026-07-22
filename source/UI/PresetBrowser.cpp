@@ -27,6 +27,13 @@ void PresetBrowser::PresetCard::paint(juce::Graphics& g)
     g.setColour(juce::Colours::black.withAlpha(0.3f));
     g.fillRoundedRectangle(bounds.translated(2, 3), 8.0f);
     
+    // Active preset: glow behind card
+    if (isActive)
+    {
+        g.setColour(juce::Colour(0xff2ECC71).withAlpha(0.25f));
+        g.fillRoundedRectangle(bounds.expanded(4), 10.0f);
+    }
+    
     // Card background
     juce::ColourGradient gradient(
         cardColor.brighter(0.2f), bounds.getCentreX(), bounds.getY(),
@@ -36,18 +43,32 @@ void PresetBrowser::PresetCard::paint(juce::Graphics& g)
     g.setGradientFill(gradient);
     g.fillRoundedRectangle(bounds, 8.0f);
     
-    // Border
-    g.setColour(hovered ? juce::Colours::white : cardColor.brighter(0.5f));
-    g.drawRoundedRectangle(bounds, 8.0f, hovered ? 2.5f : 1.5f);
+    // Border — gold/green for active, white on hover, normal otherwise
+    if (isActive)
+        g.setColour(juce::Colour(0xff2ECC71));
+    else
+        g.setColour(hovered ? juce::Colours::white : cardColor.brighter(0.5f));
+    g.drawRoundedRectangle(bounds, 8.0f, isActive ? 2.5f : (hovered ? 2.5f : 1.5f));
     
     // Top highlight
     g.setColour(juce::Colours::white.withAlpha(0.1f));
     g.fillRoundedRectangle(bounds.reduced(8, 8).withHeight(25), 5.0f);
     
+    // Active checkmark badge
+    if (isActive)
+    {
+        auto badge = juce::Rectangle<float>(bounds.getX() + 8, bounds.getY() + 8, 22, 22);
+        g.setColour(juce::Colour(0xff2ECC71));
+        g.fillEllipse(badge);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
+        g.drawText(juce::CharPointer_UTF8("\xe2\x9c\x93"), badge.toNearestInt(), juce::Justification::centred);
+    }
+    
     // Preset name
     auto textBounds = bounds.reduced(12, 12);
     g.setFont(juce::Font(16.0f, juce::Font::bold));
-    g.setColour(juce::Colours::white);
+    g.setColour(isActive ? juce::Colour(0xff2ECC71) : juce::Colours::white);
     g.drawFittedText(preset.name, textBounds.removeFromTop(40).toNearestInt(), 
                      juce::Justification::centredLeft, 2);
     
@@ -229,6 +250,16 @@ void PresetBrowser::textEditorTextChanged(juce::TextEditor& editor)
     filterPresets();
 }
 
+void PresetBrowser::setActivePreset(const juce::String& name)
+{
+    activePresetName = name;
+    for (auto* card : presetCards)
+    {
+        card->isActive = (card->preset.name == name);
+        card->repaint();
+    }
+}
+
 void PresetBrowser::setPresetManager(PresetManager* manager)
 {
     presetManager = manager;
@@ -247,6 +278,7 @@ void PresetBrowser::loadPresets()
     for (const auto& preset : allPresets)
     {
         auto* card = new PresetCard(preset);
+        card->isActive = (preset.name == activePresetName);
         card->onClick = [this](const ChainPreset& p)
         {
             if (onPresetSelected)

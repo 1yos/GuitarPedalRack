@@ -105,11 +105,6 @@ target_sources(${PROJECT_NAME} PRIVATE
     source/DSP/Drive/MetalZone.h
     source/DSP/Drive/TimmyOverdrive.cpp
     source/DSP/Drive/TimmyOverdrive.h
-    source/DSP/Drive/BossSD1.h
-    source/DSP/Drive/FuzzFace.cpp
-    source/DSP/Drive/FuzzFace.h
-    source/DSP/Drive/BluesDriver.cpp
-    source/DSP/Drive/BluesDriver.h
     
     # Amp
     source/DSP/Amp/AmpSimulator.cpp

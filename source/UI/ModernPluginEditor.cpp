@@ -504,6 +504,9 @@ void ModernPluginEditor::handlePresetSelected(const juce::String& presetName)
         handleEffectSelected(0);
     }
     
+    // Mark active preset in browser
+    presetBrowser.setActivePreset(presetName);
+    
     // Close preset browser
     togglePresetBrowser();
 }

@@ -488,22 +488,38 @@ void PedalBoardView::drawSignalFlowIndicators(juce::Graphics& g)
 
 void PedalBoardView::drawInsertionIndicator(juce::Graphics& g)
 {
-    float xPos = insertionIndex * (pedalWidth + pedalSpacing) + pedalSpacing / 2.0f - scrollOffset;
-    
-    // Vertical line
-    g.setColour(juce::Colour(0xff00E5FF).withAlpha(0.8f));
-    g.fillRect(xPos - 3, 20.0f, 6.0f, getHeight() - scrollBar.getHeight() - 40.0f);
-    
-    // Top arrow
+    if (insertionIndex < 0) return;
+
+    float topRowY    = 30.0f;
+    float bottomRowY = 265.0f;
+    float startX     = 100.0f;
+
+    float rowY;
+    int   idxInRow;
+    if (insertionIndex < 5)
+    {
+        rowY      = topRowY;
+        idxInRow  = insertionIndex;
+    }
+    else
+    {
+        rowY      = bottomRowY;
+        idxInRow  = insertionIndex - 5;
+    }
+
+    float xPos = startX + idxInRow * (pedalWidth + pedalSpacing) - scrollOffset;
+
+    g.setColour(juce::Colour(0xff00E5FF).withAlpha(0.85f));
+    g.fillRect(xPos - 3.0f, rowY, 6.0f, pedalHeight);
+
     juce::Path arrow;
-    arrow.addTriangle(xPos, 15, xPos - 8, 25, xPos + 8, 25);
+    arrow.addTriangle(xPos, rowY - 5, xPos - 8, rowY + 10, xPos + 8, rowY + 10);
     g.fillPath(arrow);
-    
-    // Bottom arrow
+
     arrow.clear();
-    arrow.addTriangle(xPos, getHeight() - scrollBar.getHeight() - 15,
-                     xPos - 8, getHeight() - scrollBar.getHeight() - 25,
-                     xPos + 8, getHeight() - scrollBar.getHeight() - 25);
+    arrow.addTriangle(xPos, rowY + pedalHeight + 5,
+                      xPos - 8, rowY + pedalHeight - 10,
+                      xPos + 8, rowY + pedalHeight - 10);
     g.fillPath(arrow);
 }
 
@@ -599,7 +615,16 @@ int PedalBoardView::getPedalIndexAt(juce::Point<int> position) const
 
 int PedalBoardView::calculateInsertionIndex(juce::Point<int> position) const
 {
-    float xWithScroll = position.getX() + scrollOffset;
-    int index = (int)((xWithScroll + pedalSpacing / 2) / (pedalWidth + pedalSpacing));
-    return juce::jlimit(0, pedals.size(), index);
+    // Determine which row based on Y position
+    float topRowY    = 30.0f;
+    float bottomRowY = 265.0f;
+    float midY       = (topRowY + pedalHeight + bottomRowY) * 0.5f;
+
+    int rowOffset = (position.getY() > midY && pedals.size() > 5) ? 5 : 0;
+
+    float xWithScroll = (float)position.getX() + scrollOffset - 100.0f; // subtract startX
+    int idxInRow = (int)((xWithScroll + pedalSpacing * 0.5f) / (pedalWidth + pedalSpacing));
+    idxInRow = juce::jlimit(0, 5, idxInRow); // max 5 per row
+
+    return juce::jlimit(0, pedals.size(), rowOffset + idxInRow);
 }

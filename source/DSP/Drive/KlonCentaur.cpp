@@ -59,15 +59,11 @@ void KlonCentaur::processInternal(AudioBuffer<float>& buffer)
             // 2. Treble boost before clipping (Klon characteristic)
             if (treble > 0.5f)
             {
-                // High-shelf boost
-                float boostFreq = 1000.0f + (treble - 0.5f) * 4000.0f;  // 1kHz to 5kHz
-                float omega = 2.0f * MathConstants<float>::pi * boostFreq / static_cast<float>(currentSampleRate);
-                float coeff = 1.0f - std::exp(-omega);
-                
-                float hp = sample - state.treble_z1 + 0.98f * state.treble_z1;
-                state.treble_z1 = hp;
-                
-                float boost = 1.0f + (treble - 0.5f) * 4.0f;  // Up to 2x boost
+                // High-shelf boost: run a 1-pole HP and add it back
+                float boost = (treble - 0.5f) * 4.0f;  // Up to 2x boost
+                // 1-pole HP: y = x - x[n-1] * coeff  (input stored, not output)
+                float hp = sample - state.treble_z1;
+                state.treble_z1 = sample;   // FIXED: store input, not hp output
                 sample = sample + hp * boost * 0.3f;
             }
             

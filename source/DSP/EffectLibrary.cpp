@@ -100,13 +100,6 @@
 #include "Pitch/FormantShifter.h"
 #include "Pitch/PitchVibrato.h"
 #include "Pitch/IntelligentHarmony.h"
-#include "Filter/TalkBox.h"
-#include "Filter/LowPassFilter.h"
-#include "Filter/HighPassFilter.h"
-#include "Filter/BandPassFilter.h"
-#include "Filter/NotchFilter.h"
-#include "Filter/FormantFilter.h"
-#include "Filter/StateVariableFilter.h"
 
 //==============================================================================
 // Singleton Instance
@@ -338,12 +331,12 @@ std::vector<EffectDescriptor> EffectLibrary::getFeaturedEffects() const
     std::vector<String> featured = {
         "tubeOverdrive",
         "chorus",
-        "tapDelay",
+        "tapeDelay",
         "plateReverb",
-        "ts808",
-        "univibe",
-        "ce2Chorus",
-        "dl4Delay"
+        "tubeScreamer808",
+        "klonCentaur",
+        "bossCE2",
+        "pingPongDelay"
     };
     
     std::vector<EffectDescriptor> results;

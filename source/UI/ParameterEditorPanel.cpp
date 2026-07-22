@@ -1,4 +1,4 @@
-#include "ParameterEditorPanel.h"
+﻿#include "ParameterEditorPanel.h"
 #include "../PluginProcessor.h"
 
 //==============================================================================
@@ -18,185 +18,284 @@ struct ParameterInfo
 static juce::Array<ParameterInfo> getParameterInfoForEffect(const juce::String& effectName)
 {
     juce::Array<ParameterInfo> params;
+    juce::String n = effectName.toLowerCase().removeCharacters(" -_");
+
+    // â”€â”€ DRIVE / OVERDRIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (n.contains("tubescreamer") || n.contains("ts808") || n.contains("ts9") || n.contains("tubeover"))
+    {
+        params.add({"drive","DRIVE",0.0f,1.0f,0.5f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("klon"))
+    {
+        params.add({"gain","GAIN",0.0f,1.0f,0.5f,""});
+        params.add({"treble","TREBLE",0.0f,1.0f,0.5f,""});
+        params.add({"output","OUTPUT",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("timmy"))
+    {
+        params.add({"gain","GAIN",0.0f,1.0f,0.4f,""});
+        params.add({"bass","BASS",0.0f,1.0f,0.5f,""});
+        params.add({"treble","TREBLE",0.0f,1.0f,0.5f,""});
+        params.add({"volume","VOLUME",0.0f,1.0f,0.8f,""});
+    }
+    else if (n.contains("bluesdriver") || n.contains("bd2"))
+    {
+        params.add({"gain","GAIN",0.0f,1.0f,0.5f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("metalzone") || n.contains("mt2"))
+    {
+        params.add({"distortion","DIST",0.0f,1.0f,0.7f,""});
+        params.add({"treble","TREBLE",0.0f,1.0f,0.5f,""});
+        params.add({"bass","BASS",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("procor") || n.contains("rat"))
+    {
+        params.add({"distortion","DIST",0.0f,1.0f,0.5f,""});
+        params.add({"filter","FILTER",0.0f,1.0f,0.5f,""});
+        params.add({"volume","VOLUME",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("bossds1") || n.contains("ds1"))
+    {
+        params.add({"dist","DIST",0.0f,1.0f,0.5f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("bosssd1") || n.contains("sd1"))
+    {
+        params.add({"drive","DRIVE",0.0f,1.0f,0.5f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("bigmuff") || n.contains("muff"))
+    {
+        params.add({"sustain","SUSTAIN",0.0f,1.0f,0.6f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"volume","VOLUME",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("fuzz"))
+    {
+        params.add({"fuzz","FUZZ",0.0f,1.0f,0.6f,""});
+        params.add({"volume","VOLUME",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("distortion"))
+    {
+        params.add({"distortion","DIST",0.0f,1.0f,0.5f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
+    else if (n.contains("overdrive"))
+    {
+        params.add({"drive","DRIVE",0.0f,1.0f,0.5f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"level","LEVEL",0.0f,1.0f,0.7f,""});
+    }
     
-    // Normalize effect name for comparison
-    juce::String normalized = effectName.toLowerCase().removeCharacters(" -");
-    
-    // DRIVE / OVERDRIVE EFFECTS
-    if (normalized.contains("tubescreamer") || normalized.contains("ts808") || 
-        normalized.contains("ts9") || normalized.contains("tubedrive") ||
-        normalized.contains("tubeover"))
-    {
-        params.add({"drive", "DRIVE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"level", "LEVEL", 0.0f, 1.0f, 0.7f, ""});
-    }
-    else if (normalized.contains("klon") || normalized.contains("centaur"))
-    {
-        params.add({"gain", "GAIN", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"treble", "TREBLE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"output", "OUTPUT", 0.0f, 1.0f, 0.7f, ""});
-    }
-    else if (normalized.contains("blues") || normalized.contains("bd2"))
-    {
-        params.add({"drive", "DRIVE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"level", "LEVEL", 0.0f, 1.0f, 0.7f, ""});
-    }
-    else if (normalized.contains("overdrive"))
-    {
-        params.add({"drive", "DRIVE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"level", "LEVEL", 0.0f, 1.0f, 0.7f, ""});
-    }
-    
-    // DISTORTION EFFECTS
-    else if (normalized.contains("ds1") || normalized.contains("rat") || 
-             normalized.contains("distortion") || normalized.contains("metal"))
-    {
-        params.add({"distortion", "DIST", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"level", "LEVEL", 0.0f, 1.0f, 0.7f, ""});
-    }
-    
-    // FUZZ EFFECTS
-    else if (normalized.contains("fuzz") || normalized.contains("muff"))
-    {
-        params.add({"fuzz", "FUZZ", 0.0f, 1.0f, 0.6f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"volume", "VOLUME", 0.0f, 1.0f, 0.7f, ""});
-    }
-    
-    // MODULATION EFFECTS
-    else if (normalized.contains("chorus"))
+    // â”€â”€ MODULATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("chorus"))
     {
         params.add({"rate", "RATE", 0.1f, 10.0f, 2.0f, " Hz"});
         params.add({"depth", "DEPTH", 0.0f, 1.0f, 0.5f, ""});
         params.add({"mix", "MIX", 0.0f, 1.0f, 0.5f, ""});
     }
-    else if (normalized.contains("flanger"))
+    else if (n.contains("flanger"))
     {
         params.add({"rate", "RATE", 0.1f, 10.0f, 0.5f, " Hz"});
         params.add({"depth", "DEPTH", 0.0f, 1.0f, 0.7f, ""});
         params.add({"feedback", "FDBK", 0.0f, 1.0f, 0.5f, ""});
+        params.add({"mix","MIX",0.0f,1.0f,0.5f,""});
     }
-    else if (normalized.contains("phaser"))
+    else if (n.contains("phaser"))
     {
         params.add({"rate", "RATE", 0.1f, 10.0f, 1.0f, " Hz"});
         params.add({"depth", "DEPTH", 0.0f, 1.0f, 0.6f, ""});
         params.add({"feedback", "FDBK", 0.0f, 1.0f, 0.4f, ""});
     }
-    else if (normalized.contains("tremolo"))
+    else if (n.contains("tremolo"))
     {
         params.add({"rate", "RATE", 0.5f, 20.0f, 4.0f, " Hz"});
         params.add({"depth", "DEPTH", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"shape", "SHAPE", 0.0f, 1.0f, 0.0f, ""});
     }
-    else if (normalized.contains("vibrato"))
+    else if (n.contains("vibrato"))
     {
         params.add({"rate", "RATE", 0.5f, 15.0f, 5.0f, " Hz"});
         params.add({"depth", "DEPTH", 0.0f, 1.0f, 0.4f, ""});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 1.0f, ""});
     }
-    else if (normalized.contains("ring"))
+    else if (n.contains("rotary"))
+    {
+        params.add({"speed","SPEED",0.0f,1.0f,0.5f,""});
+        params.add({"separation","SEP",0.0f,1.0f,0.6f,""});
+    }
+    else if (n.contains("ring"))
     {
         params.add({"frequency", "FREQ", 20.0f, 5000.0f, 400.0f, " Hz"});
         params.add({"mix", "MIX", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
     }
     
-    // DELAY EFFECTS
-    else if (normalized.contains("delay"))
+    // â”€â”€ DELAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("pingpong"))
     {
-        params.add({"time", "TIME", 10.0f, 2000.0f, 500.0f, " ms"});
-        params.add({"feedback", "FDBK", 0.0f, 1.0f, 0.3f, ""});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 0.4f, ""});
+        params.add({"time","TIME",0.0f,1.0f,0.5f,""});
+        params.add({"feedback","FDBK",0.0f,1.0f,0.4f,""});
+        params.add({"width","WIDTH",0.0f,1.0f,1.0f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.4f,""});
     }
-    else if (normalized.contains("echo"))
+    else if (n.contains("tapedelay") || (n.contains("tape") && !n.contains("talkbox")))
     {
-        params.add({"time", "TIME", 50.0f, 2000.0f, 400.0f, " ms"});
-        params.add({"feedback", "FDBK", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 0.5f, ""});
+        params.add({"time","TIME",0.0f,1.0f,0.4f,""});
+        params.add({"feedback","FDBK",0.0f,1.0f,0.5f,""});
+        params.add({"wow","WOW",0.0f,1.0f,0.3f,""});
+        params.add({"flutter","FLUTTER",0.0f,1.0f,0.2f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.4f,""});
     }
-    
-    // REVERB EFFECTS
-    else if (normalized.contains("reverb"))
+    else if (n.contains("analogdelay"))
     {
-        params.add({"size", "SIZE", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"decay", "DECAY", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 0.3f, ""});
+        params.add({"time","TIME",0.0f,1.0f,0.35f,""});
+        params.add({"feedback","FDBK",0.0f,1.0f,0.5f,""});
+        params.add({"modulation","MOD",0.0f,1.0f,0.3f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.5f,""});
     }
-    
-    // FILTER EFFECTS
-    else if (normalized.contains("wah"))
+    else if (n.contains("delay") || n.contains("echo"))
     {
-        params.add({"frequency", "FREQ", 300.0f, 2500.0f, 800.0f, " Hz"});
-        params.add({"resonance", "Q", 0.5f, 10.0f, 4.0f, ""});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 1.0f, ""});
+        params.add({"time","TIME",10.0f,2000.0f,500.0f," ms"});
+        params.add({"feedback","FDBK",0.0f,1.0f,0.3f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.4f,""});
     }
-    else if (normalized.contains("filter"))
+    // â”€â”€ REVERB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("spring"))
     {
-        params.add({"cutoff", "CUTOFF", 20.0f, 20000.0f, 1000.0f, " Hz"});
-        params.add({"resonance", "Q", 0.1f, 10.0f, 1.0f, ""});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 1.0f, ""});
+        params.add({"decay","DECAY",0.0f,1.0f,0.6f,""});
+        params.add({"tone","TONE",0.0f,1.0f,0.5f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.4f,""});
     }
-    
-    // DYNAMICS EFFECTS
-    else if (normalized.contains("compressor"))
+    else if (n.contains("reverb") || n.contains("plate") || n.contains("hall") || n.contains("room"))
     {
-        params.add({"threshold", "THRESH", -60.0f, 0.0f, -20.0f, " dB"});
-        params.add({"ratio", "RATIO", 1.0f, 20.0f, 4.0f, ":1"});
-        params.add({"attack", "ATTACK", 0.1f, 100.0f, 10.0f, " ms"});
+        params.add({"size","SIZE",0.0f,1.0f,0.5f,""});
+        params.add({"decay","DECAY",0.0f,1.0f,0.5f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.3f,""});
     }
-    else if (normalized.contains("gate") || normalized.contains("noise"))
+    // â”€â”€ FILTER / WAH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("wah") || n.contains("autowah"))
     {
-        params.add({"threshold", "THRESH", -80.0f, 0.0f, -40.0f, " dB"});
-        params.add({"attack", "ATTACK", 0.1f, 50.0f, 1.0f, " ms"});
-        params.add({"release", "RELEASE", 10.0f, 1000.0f, 100.0f, " ms"});
+        params.add({"frequency","FREQ",300.0f,2500.0f,800.0f," Hz"});
+        params.add({"resonance","Q",0.0f,1.0f,0.7f,""});
+        params.add({"mix","MIX",0.0f,1.0f,1.0f,""});
     }
-    else if (normalized.contains("limiter"))
+    else if (n.contains("envelopefilter") || n.contains("envelope"))
     {
-        params.add({"threshold", "THRESH", -20.0f, 0.0f, -3.0f, " dB"});
-        params.add({"release", "RELEASE", 10.0f, 1000.0f, 100.0f, " ms"});
-        params.add({"output", "OUTPUT", -20.0f, 20.0f, 0.0f, " dB"});
+        params.add({"sensitivity","SENS",0.0f,1.0f,0.7f,""});
+        params.add({"attack","ATK",0.0f,1.0f,0.3f,""});
+        params.add({"decay","DEC",0.0f,1.0f,0.5f,""});
+        params.add({"resonance","Q",0.0f,1.0f,0.6f,""});
     }
-    
-    // EQ / UTILITY
-    else if (normalized.contains("eq"))
+    else if (n.contains("talkbox"))
     {
-        params.add({"low", "LOW", -12.0f, 12.0f, 0.0f, " dB"});
-        params.add({"mid", "MID", -12.0f, 12.0f, 0.0f, " dB"});
-        params.add({"high", "HIGH", -12.0f, 12.0f, 0.0f, " dB"});
+        params.add({"formant","FORMANT",0.0f,1.0f,0.5f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.8f,""});
+        params.add({"quality","QUALITY",0.0f,1.0f,0.6f,""});
     }
-    
-    // AMP / CABINET
-    else if (normalized.contains("amp"))
+    else if (n.contains("filter"))
     {
-        params.add({"gain", "GAIN", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"bass", "BASS", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"middle", "MID", 0.0f, 1.0f, 0.5f, ""});
-    }
-    else if (normalized.contains("cabinet") || normalized.contains("cab"))
-    {
-        params.add({"mix", "MIX", 0.0f, 1.0f, 1.0f, ""});
-        params.add({"lowcut", "LOW CUT", 20.0f, 500.0f, 80.0f, " Hz"});
-        params.add({"highcut", "HI CUT", 2000.0f, 20000.0f, 8000.0f, " Hz"});
+        params.add({"frequency","FREQ",0.0f,1.0f,0.5f,""});
+        params.add({"resonance","Q",0.0f,1.0f,0.3f,""});
     }
     
-    // PITCH EFFECTS
-    else if (normalized.contains("octaver") || normalized.contains("pitch"))
+    // â”€â”€ DYNAMICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("deesser"))
     {
-        params.add({"pitch", "PITCH", -24.0f, 24.0f, 0.0f, " st"});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"tone", "TONE", 0.0f, 1.0f, 0.5f, ""});
+        params.add({"threshold","THRESH",0.0f,1.0f,0.7f,""});
+        params.add({"frequency","FREQ",0.0f,1.0f,0.6f,""});
+        params.add({"ratio","RATIO",0.0f,1.0f,0.5f,""});
     }
-    else if (normalized.contains("harmonizer"))
+    else if (n.contains("multiband"))
     {
-        params.add({"interval", "INTERVAL", -12.0f, 12.0f, 5.0f, " st"});
-        params.add({"mix", "MIX", 0.0f, 1.0f, 0.5f, ""});
-        params.add({"detune", "DETUNE", 0.0f, 50.0f, 0.0f, " ct"});
+        params.add({"lowthreshold","LO THR",0.0f,1.0f,0.6f,""});
+        params.add({"midthreshold","MID THR",0.0f,1.0f,0.6f,""});
+        params.add({"highthreshold","HI THR",0.0f,1.0f,0.6f,""});
+        params.add({"ratio","RATIO",0.0f,1.0f,0.5f,""});
     }
-    
+    else if (n.contains("compressor") || n.contains("optical") || n.contains("vca") || n.contains("fetcomp") || n.contains("tubecomp"))
+    {
+        params.add({"threshold","THRESH",0.0f,1.0f,0.65f,""});
+        params.add({"ratio","RATIO",0.0f,1.0f,0.3f,""});
+        params.add({"attack","ATTACK",0.0f,1.0f,0.1f,""});
+        params.add({"release","RELEASE",0.0f,1.0f,0.3f,""});
+        params.add({"makeup","MAKEUP",0.0f,1.0f,0.4f,""});
+    }
+    else if (n.contains("limiter"))
+    {
+        params.add({"threshold","THRESH",0.0f,1.0f,0.8f,""});
+        params.add({"release","RELEASE",0.0f,1.0f,0.5f,""});
+        params.add({"makeup","MAKEUP",0.0f,1.0f,0.0f,""});
+    }
+    else if (n.contains("expander"))
+    {
+        params.add({"threshold","THRESH",0.0f,1.0f,0.3f,""});
+        params.add({"ratio","RATIO",0.0f,1.0f,0.5f,""});
+        params.add({"attack","ATTACK",0.0f,1.0f,0.3f,""});
+        params.add({"release","RELEASE",0.0f,1.0f,0.5f,""});
+    }
+    else if (n.contains("gate") || n.contains("noise"))
+    {
+        params.add({"threshold","THRESH",-80.0f,0.0f,-40.0f," dB"});
+        params.add({"attack","ATTACK",0.1f,50.0f,1.0f," ms"});
+        params.add({"release","RELEASE",10.0f,1000.0f,100.0f," ms"});
+    }
+    // â”€â”€ EQ / TONESTACK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("fender"))
+    {
+        params.add({"bass","BASS",0.0f,1.0f,0.5f,""});
+        params.add({"mid","MID",0.0f,1.0f,0.5f,""});
+        params.add({"treble","TREBLE",0.0f,1.0f,0.5f,""});
+    }
+    else if (n.contains("marshall"))
+    {
+        params.add({"bass","BASS",0.0f,1.0f,0.5f,""});
+        params.add({"mid","MID",0.0f,1.0f,0.5f,""});
+        params.add({"treble","TREBLE",0.0f,1.0f,0.5f,""});
+        params.add({"presence","PRESENCE",0.0f,1.0f,0.5f,""});
+    }
+    else if (n.contains("eq"))
+    {
+        params.add({"low","LOW",-12.0f,12.0f,0.0f," dB"});
+        params.add({"mid","MID",-12.0f,12.0f,0.0f," dB"});
+        params.add({"high","HIGH",-12.0f,12.0f,0.0f," dB"});
+    }
+    // â”€â”€ AMP / CABINET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("amp"))
+    {
+        params.add({"gain","GAIN",0.0f,1.0f,0.5f,""});
+        params.add({"bass","BASS",0.0f,1.0f,0.5f,""});
+        params.add({"middle","MID",0.0f,1.0f,0.5f,""});
+    }
+    else if (n.contains("cabinet") || n.contains("cab"))
+    {
+        params.add({"mix","MIX",0.0f,1.0f,1.0f,""});
+        params.add({"lowcut","LOW CUT",20.0f,500.0f,80.0f," Hz"});
+        params.add({"highcut","HI CUT",2000.0f,20000.0f,8000.0f," Hz"});
+    }
+    // â”€â”€ PITCH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (n.contains("harmonizer"))
+    {
+        params.add({"interval","INTERVAL",0.0f,1.0f,0.33f,""});
+        params.add({"key","KEY",0.0f,1.0f,0.5f,""});
+        params.add({"mix","MIX",0.0f,1.0f,0.5f,""});
+    }
+    else if (n.contains("octaver") || n.contains("octave"))
+    {
+        params.add({"octavelevel","OCTAVE",0.0f,1.0f,0.7f,""});
+        params.add({"direct","DIRECT",0.0f,1.0f,0.5f,""});
+    }
+    else if (n.contains("pitch") || n.contains("whammy"))
+    {
+        params.add({"pitch","PITCH",-12.0f,12.0f,0.0f," st"});
+        params.add({"formant","FORMANT",0.0f,1.0f,0.5f,""});
+    }
+
     return params;
 }
 
@@ -218,7 +317,7 @@ ParameterEditorPanel::ParameterEditorPanel()
     
     // Close button (top right corner)
     addAndMakeVisible(closeButton);
-    closeButton.setButtonText("✕");
+    closeButton.setButtonText("âœ•");
     closeButton.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
     closeButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white.withAlpha(0.7f));
     closeButton.onClick = [this]()
@@ -332,7 +431,7 @@ void ParameterEditorPanel::paint(juce::Graphics& g)
     g.drawText(modelText, dropdownBounds.reduced(8, 0), juce::Justification::centredLeft);
     
     g.setColour(juce::Colours::white.withAlpha(0.4f));
-    g.drawText("▼", dropdownBounds.removeFromRight(15.0f), juce::Justification::centred);
+    g.drawText("â–¼", dropdownBounds.removeFromRight(15.0f), juce::Justification::centred);
     
     // ============ CENTER-RIGHT: VISUALIZER GRAPH ============
     auto graphBounds = juce::Rectangle<float>(getWidth() - 390.0f, 15.0f, 220.0f, 135.0f);
@@ -630,90 +729,357 @@ juce::Colour ParameterEditorPanel::getCategoryColor() const
 
 void ParameterEditorPanel::setEffectParameter(const juce::String& paramName, float value)
 {
-    if (!currentEffect)
-        return;
-    
-    // Normalize parameter name for comparison
-    juce::String normalized = paramName.toLowerCase().removeCharacters(" -_");
-    
-    // Try to cast to specific effect types and call their setter methods
-    // This is a simple approach - each effect type has its own setter methods
-    
-    // DRIVE / OVERDRIVE
-    if (auto* ts = dynamic_cast<TubeScreamer808*>(currentEffect))
+    if (!currentEffect) return;
+    juce::String p = paramName.toLowerCase().removeCharacters(" -_");
+
+    // â”€â”€ DRIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (auto* e = dynamic_cast<TubeScreamer808*>(currentEffect))
     {
-        if (normalized == "drive") ts->setDrive(value);
-        else if (normalized == "tone") ts->setTone(value);
-        else if (normalized == "level") ts->setLevel(value);
+        if (p=="drive") e->setDrive(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
     }
-    else if (auto* ts = dynamic_cast<TubeScreamerTS9*>(currentEffect))
+    else if (auto* e = dynamic_cast<TubeScreamerTS9*>(currentEffect))
     {
-        if (normalized == "drive") ts->setDrive(value);
-        else if (normalized == "tone") ts->setTone(value);
-        else if (normalized == "level") ts->setLevel(value);
+        if (p=="drive") e->setDrive(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
     }
-    else if (auto* od = dynamic_cast<TubeOverdrive*>(currentEffect))
+    else if (auto* e = dynamic_cast<TubeScreamerMini*>(currentEffect))
     {
-        if (normalized == "drive") od->setDrive(value);
-        else if (normalized == "tone") od->setTone(value);
-        else if (normalized == "level") od->setLevel(value);
+        if (p=="drive"||p=="overdrive") e->setOverdrive(value);
+        else if (p=="tone") e->setTone(value);
     }
-    
-    // DISTORTION
-    else if (auto* dist = dynamic_cast<Distortion*>(currentEffect))
+    else if (auto* e = dynamic_cast<TubeOverdrive*>(currentEffect))
     {
-        if (normalized == "distortion" || normalized == "dist") dist->setDrive(value);
-        else if (normalized == "tone") dist->setTone(value);
-        else if (normalized == "level") dist->setLevel(value);
+        if (p=="drive") e->setDrive(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
     }
-    
-    // MODULATION
-    else if (auto* chorus = dynamic_cast<Chorus*>(currentEffect))
+    else if (auto* e = dynamic_cast<KlonCentaur*>(currentEffect))
     {
-        if (normalized == "rate") chorus->setRate(value);
-        else if (normalized == "depth") chorus->setDepth(value);
-        else if (normalized == "mix") chorus->setMix(value);
+        if (p=="gain") e->setGain(value);
+        else if (p=="treble") e->setTreble(value);
+        else if (p=="output") e->setOutput(value);
     }
-    
-    // TIME EFFECTS
-    else if (auto* delay = dynamic_cast<Delay*>(currentEffect))
+    else if (auto* e = dynamic_cast<TimmyOverdrive*>(currentEffect))
     {
-        if (normalized == "time") delay->setTime(value);
-        else if (normalized == "feedback" || normalized == "fdbk") delay->setFeedback(value);
-        else if (normalized == "mix") delay->setMix(value);
+        if (p=="gain") e->setGain(value);
+        else if (p=="bass") e->setBass(value);
+        else if (p=="treble") e->setTreble(value);
+        else if (p=="volume") e->setVolume(value);
     }
-    // Note: Reverb is juce::Reverb (built-in), not our custom class
-    
-    // DYNAMICS
-    else if (auto* comp = dynamic_cast<Compressor*>(currentEffect))
+    else if (auto* e = dynamic_cast<BluesDriver*>(currentEffect))
     {
-        if (normalized == "threshold" || normalized == "thresh") comp->setThreshold(value);
-        else if (normalized == "ratio") comp->setRatio(value);
-        else if (normalized == "attack") comp->setAttack(value);
+        if (p=="gain") e->setGain(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
     }
-    else if (auto* gate = dynamic_cast<NoiseGate*>(currentEffect))
+    else if (auto* e = dynamic_cast<MetalZone*>(currentEffect))
     {
-        if (normalized == "threshold" || normalized == "thresh") gate->setThreshold(value);
-        else if (normalized == "attack") gate->setAttack(value);
-        else if (normalized == "release") gate->setRelease(value);
+        if (p=="distortion"||p=="dist") e->setDistortion(value);
+        else if (p=="treble") e->setTreble(value);
+        else if (p=="bass") e->setBass(value);
+        else if (p=="level") e->setLevel(value);
     }
-    
-    // UTILITY
-    else if (auto* eq = dynamic_cast<EQ*>(currentEffect))
+    else if (auto* e = dynamic_cast<ProCoRAT2*>(currentEffect))
     {
-        if (normalized == "low") eq->setBandGain(0, value);
-        else if (normalized == "mid" || normalized == "middle") eq->setBandGain(1, value);
-        else if (normalized == "high") eq->setBandGain(2, value);
+        if (p=="distortion"||p=="dist") e->setDistortion(value);
+        else if (p=="filter") e->setFilter(value);
+        else if (p=="volume") e->setVolume(value);
     }
-    
-    // AMP / CABINET
-    else if (auto* amp = dynamic_cast<AmpSimulator*>(currentEffect))
+    else if (auto* e = dynamic_cast<TurboRAT*>(currentEffect))
     {
-        if (normalized == "gain") amp->setGain(value);
-        else if (normalized == "bass") amp->setBass(value);
-        else if (normalized == "middle" || normalized == "mid") amp->setMid(value);
+        if (p=="distortion"||p=="dist") e->setDistortion(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="volume") e->setVolume(value);
     }
-    // Note: CabinetIR doesn't have setMix method
-    
+    else if (auto* e = dynamic_cast<ProCoRAT*>(currentEffect))
+    {
+        if (p=="distortion"||p=="dist") e->setDistortion(value);
+        else if (p=="filter") e->setFilter(value);
+        else if (p=="volume") e->setVolume(value);
+    }
+    else if (auto* e = dynamic_cast<BossDS1*>(currentEffect))
+    {
+        if (p=="dist") e->setDist(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
+    }
+    else if (auto* e = dynamic_cast<BossSD1*>(currentEffect))
+    {
+        if (p=="drive") e->setDrive(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
+    }
+    else if (auto* e = dynamic_cast<BigMuffRussian*>(currentEffect))
+    {
+        if (p=="sustain") e->setSustain(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="volume") e->setVolume(value);
+    }
+    else if (auto* e = dynamic_cast<BigMuffPi*>(currentEffect))
+    {
+        if (p=="sustain") e->setSustain(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="volume") e->setVolume(value);
+    }
+    else if (auto* e = dynamic_cast<FuzzFaceSilicon*>(currentEffect))
+    {
+        if (p=="fuzz") e->setFuzz(value);
+        else if (p=="volume") e->setVolume(value);
+    }
+    else if (auto* e = dynamic_cast<FuzzFace*>(currentEffect))
+    {
+        if (p=="fuzz") e->setFuzz(value);
+        else if (p=="volume") e->setVolume(value);
+    }
+    else if (auto* e = dynamic_cast<Distortion*>(currentEffect))
+    {
+        if (p=="distortion"||p=="dist") e->setDrive(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="level") e->setLevel(value);
+    }
+    // â”€â”€ MODULATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<ChorusEnsemble*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+        else if (p=="depth") e->setDepth(value);
+        else if (p=="voices") e->setVoices(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<Chorus*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+        else if (p=="depth") e->setDepth(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<FlangerBasic*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+        else if (p=="depth") e->setDepth(value);
+        else if (p=="feedback") e->setFeedback(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<Phaser4Stage*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+        else if (p=="depth") e->setDepth(value);
+        else if (p=="feedback") e->setFeedback(value);
+    }
+    else if (auto* e = dynamic_cast<Phaser90*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+    }
+    else if (auto* e = dynamic_cast<TremoloOptical*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+        else if (p=="depth") e->setDepth(value);
+    }
+    else if (auto* e = dynamic_cast<VibratoClassic*>(currentEffect))
+    {
+        if (p=="rate") e->setRate(value);
+        else if (p=="depth") e->setDepth(value);
+    }
+    else if (auto* e = dynamic_cast<RotarySpeaker*>(currentEffect))
+    {
+        if (p=="speed") e->setSpeed(value);
+        else if (p=="separation"||p=="sep") e->setSeparation(value);
+    }
+    // â”€â”€ DELAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<PingPongDelay*>(currentEffect))
+    {
+        if (p=="time") e->setTime(value);
+        else if (p=="feedback"||p=="fdbk") e->setFeedback(value);
+        else if (p=="width") e->setStereoWidth(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<TapeDelay*>(currentEffect))
+    {
+        if (p=="time") e->setTime(value);
+        else if (p=="feedback"||p=="fdbk") e->setFeedback(value);
+        else if (p=="wow") e->setWow(value);
+        else if (p=="flutter") e->setFlutter(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<AnalogDelay*>(currentEffect))
+    {
+        if (p=="time") e->setTime(value);
+        else if (p=="feedback"||p=="fdbk") e->setFeedback(value);
+        else if (p=="modulation"||p=="mod") e->setModulation(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<Delay*>(currentEffect))
+    {
+        if (p=="time") e->setTime(value);
+        else if (p=="feedback"||p=="fdbk") e->setFeedback(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    // â”€â”€ REVERB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<SpringReverb*>(currentEffect))
+    {
+        if (p=="decay") e->setDecay(value);
+        else if (p=="tone") e->setTone(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<PlateReverb*>(currentEffect))
+    {
+        if (p=="size") e->setSize(value);
+        else if (p=="decay") e->setDamping(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    // â”€â”€ DYNAMICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<DeEsser*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="frequency"||p=="freq") e->setFrequency(value);
+        else if (p=="ratio") e->setRatio(value);
+    }
+    else if (auto* e = dynamic_cast<MultibandCompressor*>(currentEffect))
+    {
+        if (p=="lowthreshold"||p=="lothr") e->setLowThreshold(value);
+        else if (p=="midthreshold"||p=="midthr") e->setMidThreshold(value);
+        else if (p=="highthreshold"||p=="hithr") e->setHighThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+    }
+    else if (auto* e = dynamic_cast<FETCompressor*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+        else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+        else if (p=="makeup") e->setMakeup(value);
+    }
+    else if (auto* e = dynamic_cast<OpticalCompressor*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+        else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+        else if (p=="makeup") e->setMakeup(value);
+    }
+    else if (auto* e = dynamic_cast<VCACompressor*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+        else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+        else if (p=="makeup") e->setMakeup(value);
+    }
+    else if (auto* e = dynamic_cast<TubeCompressor*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+        else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+        else if (p=="makeup") e->setMakeup(value);
+    }
+    else if (auto* e = dynamic_cast<Limiter*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="release") e->setRelease(value);
+        else if (p=="makeup") e->setMakeup(value);
+    }
+    else if (auto* e = dynamic_cast<Expander*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+        else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+    }
+    else if (auto* e = dynamic_cast<Compressor*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="ratio") e->setRatio(value);
+        else if (p=="attack") e->setAttack(value);
+    }
+    else if (auto* e = dynamic_cast<NoiseGate*>(currentEffect))
+    {
+        if (p=="threshold") e->setThreshold(value);
+        else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+    }
+    // â”€â”€ FILTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<WahPedal*>(currentEffect))
+    {
+        if (p=="frequency"||p=="freq") e->setPosition(juce::jmap(value, 300.0f, 2500.0f, 0.0f, 1.0f));
+        else if (p=="resonance"||p=="q") e->setResonance(value);
+    }
+    else if (auto* e = dynamic_cast<AutoWah*>(currentEffect))
+    {
+        if (p=="frequency"||p=="freq") e->setFrequency(value);
+        else if (p=="resonance"||p=="q") e->setResonance(value);
+        else if (p=="sensitivity"||p=="sens") e->setSensitivity(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<EnvelopeFilter*>(currentEffect))
+    {
+        if (p=="sensitivity"||p=="sens") e->setSensitivity(value);
+        else if (p=="attack"||p=="atk") e->setAttack(value);
+        else if (p=="decay"||p=="dec") e->setDecay(value);
+        else if (p=="resonance"||p=="q") e->setResonance(value);
+    }
+    else if (auto* e = dynamic_cast<TalkBox*>(currentEffect))
+    {
+        if (p=="formant") e->setFormant(value);
+        else if (p=="mix") e->setMix(value);
+        else if (p=="quality") e->setQuality(value);
+    }
+    else if (auto* e = dynamic_cast<LowPassFilter*>(currentEffect))
+    {
+        if (p=="frequency"||p=="freq"||p=="cutoff") e->setFrequency(value);
+        else if (p=="resonance"||p=="q") e->setResonance(value);
+    }
+    // â”€â”€ PITCH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<Harmonizer*>(currentEffect))
+    {
+        if (p=="interval") e->setInterval(value);
+        else if (p=="key") e->setKey(value);
+        else if (p=="mix") e->setMix(value);
+    }
+    else if (auto* e = dynamic_cast<OctaverUp*>(currentEffect))
+    {
+        if (p=="octavelevel"||p=="octave") e->setOctaveLevel(value);
+        else if (p=="direct") e->setDirect(value);
+    }
+    else if (auto* e = dynamic_cast<OctaverDown*>(currentEffect))
+    {
+        if (p=="octavelevel"||p=="octave") e->setOctaveLevel(value);
+        else if (p=="direct") e->setDirect(value);
+    }
+    else if (auto* e = dynamic_cast<PitchShifter*>(currentEffect))
+    {
+        if (p=="pitch") e->setPitch(value);
+        else if (p=="formant") e->setFormant(value);
+    }
+    // â”€â”€ EQ / TONESTACK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<ToneStackFender*>(currentEffect))
+    {
+        if (p=="bass") e->setBass(value);
+        else if (p=="mid") e->setMid(value);
+        else if (p=="treble") e->setTreble(value);
+    }
+    else if (auto* e = dynamic_cast<ToneStackMarshall*>(currentEffect))
+    {
+        if (p=="bass") e->setBass(value);
+        else if (p=="mid") e->setMid(value);
+        else if (p=="treble") e->setTreble(value);
+        else if (p=="presence") e->setPresence(value);
+    }
+    else if (auto* e = dynamic_cast<EQ*>(currentEffect))
+    {
+        if (p=="low") e->setBandGain(0, value);
+        else if (p=="mid"||p=="middle") e->setBandGain(1, value);
+        else if (p=="high") e->setBandGain(2, value);
+    }
+    // â”€â”€ AMP / CABINET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<AmpSimulator*>(currentEffect))
+    {
+        if (p=="gain") e->setGain(value);
+        else if (p=="bass") e->setBass(value);
+        else if (p=="middle"||p=="mid") e->setMid(value);
+    }
+
     DBG("Parameter changed: " + paramName + " = " + juce::String(value));
 }
+

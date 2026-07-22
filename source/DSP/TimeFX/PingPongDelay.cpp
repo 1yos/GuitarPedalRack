@@ -26,7 +26,8 @@ void PingPongDelay::processInternal(AudioBuffer<float>& buffer)
     const float feedback = feedbackParam.load() * 0.85f;
     const float width = widthParam.load();
     const float mix = mixParam.load();
-    const float delaySamples = (time / 1000.0f) * currentSampleRate;
+    const float delaySamples = (time / 1000.0f) * (float)currentSampleRate;
+    const int delayInt = juce::jlimit(1, maxDelay - 1, (int)delaySamples);
     
     if (buffer.getNumChannels() < 2)
     {
@@ -34,10 +35,8 @@ void PingPongDelay::processInternal(AudioBuffer<float>& buffer)
         auto& state = channelState[0];
         for (int i = 0; i < buffer.getNumSamples(); ++i)
         {
-            float readPos = state.writePos - delaySamples;
-            if (readPos < 0) readPos += maxDelay;
-            int idx = (int)readPos;
-            float delayed = state.delayBuf[idx];
+            int readPos = (state.writePos - delayInt + maxDelay) % maxDelay;
+            float delayed = state.delayBuf[readPos];
             state.lpfZ1 = state.lpfZ1 + 0.5f * (delayed - state.lpfZ1);
             state.delayBuf[state.writePos] = data[i] + state.lpfZ1 * feedback;
             data[i] = data[i] * (1.0f - mix) + state.lpfZ1 * mix;
@@ -53,17 +52,23 @@ void PingPongDelay::processInternal(AudioBuffer<float>& buffer)
         
         for (int i = 0; i < buffer.getNumSamples(); ++i)
         {
-            float readPos = stateL.writePos - delaySamples;
-            if (readPos < 0) readPos += maxDelay;
-            int idx = (int)readPos;
-            float delayedL = stateL.delayBuf[idx];
-            float delayedR = stateR.delayBuf[idx];
+            // FIXED: each channel uses its own write position for reading
+            int readPosL = (stateL.writePos - delayInt + maxDelay) % maxDelay;
+            int readPosR = (stateR.writePos - delayInt + maxDelay) % maxDelay;
+            
+            float delayedL = stateL.delayBuf[readPosL];
+            float delayedR = stateR.delayBuf[readPosR];
+            
             stateL.lpfZ1 = stateL.lpfZ1 + 0.5f * (delayedL - stateL.lpfZ1);
             stateR.lpfZ1 = stateR.lpfZ1 + 0.5f * (delayedR - stateR.lpfZ1);
+            
+            // Ping-pong cross-feed: L feeds into R delay, R feeds into L delay
             stateL.delayBuf[stateL.writePos] = dataL[i] + stateR.lpfZ1 * feedback * width;
             stateR.delayBuf[stateR.writePos] = dataR[i] + stateL.lpfZ1 * feedback * width;
+            
             dataL[i] = dataL[i] * (1.0f - mix) + stateL.lpfZ1 * mix;
             dataR[i] = dataR[i] * (1.0f - mix) + stateR.lpfZ1 * mix;
+            
             stateL.writePos = (stateL.writePos + 1) % maxDelay;
             stateR.writePos = (stateR.writePos + 1) % maxDelay;
         }
