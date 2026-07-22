@@ -12,15 +12,8 @@ ModernPluginEditor::ModernPluginEditor(GuitarPedalRackProcessor& p)
     titleLabel.setVisible(false);
     titleLabel.setText("Aether Guitar Pedal Rack", juce::dontSendNotification);
     
-    addAndMakeVisible(cpuLabel);
-    cpuLabel.setFont(juce::Font(12.0f));
-    cpuLabel.setColour(juce::Label::textColourId, juce::Colour(0xff00E5FF));
-    cpuLabel.setJustificationType(juce::Justification::centredRight);
-    
-    addAndMakeVisible(effectCountLabel);
-    effectCountLabel.setFont(juce::Font(12.0f));
-    effectCountLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.8f));
-    effectCountLabel.setJustificationType(juce::Justification::centredLeft);
+    cpuLabel.setVisible(false);
+    effectCountLabel.setVisible(false);
     
     // ============ PEDALBOARD VIEW (PROFESSIONAL PEDAL MODE ONLY) ============
     pedalBoardView.setProcessor(&audioProcessor);
@@ -246,9 +239,7 @@ void ModernPluginEditor::resized()
     // Skip 270px for the logo area
     topBar.removeFromLeft(270);
     
-    // Right side: CPU + count
-    cpuLabel.setBounds(topBar.removeFromRight(100).reduced(6, 8));
-    effectCountLabel.setBounds(topBar.removeFromRight(80).reduced(6, 8));
+    // CPU and count labels hidden — clean header
     
     // ─── BOTTOM TOOLBAR ────────────────────────────────────────────────────
     auto botBar = bounds.removeFromBottom(botH);
