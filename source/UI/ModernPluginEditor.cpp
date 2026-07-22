@@ -8,11 +8,9 @@ ModernPluginEditor::ModernPluginEditor(GuitarPedalRackProcessor& p)
     setResizeLimits(900, 520, 2000, 1400);
     
     // ============ TITLE BAR ============
-    addAndMakeVisible(titleLabel);
-    titleLabel.setText("Guitar Pedal Rack", juce::dontSendNotification);  // Simpler, cleaner
-    titleLabel.setFont(juce::Font(20.0f, juce::Font::bold));  // Smaller, less intrusive
-    titleLabel.setColour(juce::Label::textColourId, juce::Colours::white.withAlpha(0.9f));
-    titleLabel.setJustificationType(juce::Justification::centredLeft);
+    // Title is drawn manually in paint() — label is hidden but kept for compatibility
+    titleLabel.setVisible(false);
+    titleLabel.setText("Aether Guitar Pedal Rack", juce::dontSendNotification);
     
     addAndMakeVisible(cpuLabel);
     cpuLabel.setFont(juce::Font(12.0f));
@@ -244,15 +242,9 @@ void ModernPluginEditor::resized()
     // ─── TOP HEADER BAR ────────────────────────────────────────────────────
     auto topBar = bounds.removeFromTop(topH);
     
-    // Title labels (drawn in paint(), just position status labels)
-    titleLabel.setBounds(topBar.removeFromLeft(270).reduced(8, 6));
-    titleLabel.setFont(juce::Font(1.0f)); // hide – we draw manually in paint()
-    titleLabel.setColour(juce::Label::textColourId, juce::Colours::transparentBlack);
-    
-    // Preset selector area (center)
-    auto presetCenter = topBar;
-    presetCenter.removeFromLeft(presetCenter.getWidth() / 2 - 120);
-    // (drawn via buttons below)
+    // AETHER + subtitle drawn in paint() — no label needed in header
+    // Skip 270px for the logo area
+    topBar.removeFromLeft(270);
     
     // Right side: CPU + count
     cpuLabel.setBounds(topBar.removeFromRight(100).reduced(6, 8));
