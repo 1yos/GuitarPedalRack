@@ -2,7 +2,6 @@
 
 #include "../JuceHeader.h"
 #include "../PluginProcessor.h"
-#include "EffectChainView.h"
 #include "PedalBoardView.h"
 #include "EffectBrowser.h"
 #include "ParameterEditorPanel.h"
