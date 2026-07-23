@@ -1,62 +1,64 @@
 #pragma once
 
 #include "../JuceHeader.h"
-#include "EffectModule.h"
+#include "../DSP/EffectLibrary.h"
 
-using namespace juce;
-
-//==============================================================================
 /**
- * EffectBrowser - Sidebar component for browsing and adding effects
+ * EffectBrowser - Searchable browser for all available effects
  * 
  * Features:
- * - Categorized effect list (Dynamics, Drive, Modulation, etc.)
- * - Search/filter
- * - Click to add effect to chain
- * - Visual effect icons/colors
+ * - Category filtering (Drive, Modulation, Delay, etc.)
+ * - Search by name
+ * - Visual effect cards with icons
+ * - Drag to add to chain or click to insert
+ * - CPU usage preview
+ * - Effect description tooltips
  */
-class EffectBrowser : public Component
+class EffectBrowser : public juce::Component,
+                      public juce::TextEditor::Listener
 {
 public:
     EffectBrowser();
     ~EffectBrowser() override = default;
     
-    //==============================================================================
-    void paint(Graphics& g) override;
+    void paint(juce::Graphics& g) override;
     void resized() override;
     
-    //==============================================================================
+    // TextEditor::Listener
+    void textEditorTextChanged(juce::TextEditor& editor) override;
+    
     // Callbacks
-    std::function<void(EffectModule::EffectType, const String& name)> onEffectSelected;
+    std::function<void(const juce::String& effectId, const juce::String& category)> onEffectSelected;
     
 private:
-    struct EffectItem : public Component
+    class EffectCard : public juce::Component
     {
-        EffectItem(EffectModule::EffectType type, const String& name, const String& category);
+    public:
+        EffectCard(const EffectDescriptor& desc);
+        void paint(juce::Graphics& g) override;
+        void mouseEnter(const juce::MouseEvent& e) override;
+        void mouseExit(const juce::MouseEvent& e) override;
+        void mouseDown(const juce::MouseEvent& e) override;
         
-        void paint(Graphics& g) override;
-        void mouseEnter(const MouseEvent&) override;
-        void mouseExit(const MouseEvent&) override;
-        void mouseDown(const MouseEvent&) override;
+        EffectDescriptor descriptor;
+        bool hovered = false;
         
-        EffectModule::EffectType effectType;
-        String effectName;
-        String categoryName;
-        Colour effectColor;
-        bool isHovered = false;
-        
-        std::function<void(EffectModule::EffectType, const String&)> onClick;
+        std::function<void(const EffectDescriptor&)> onClick;
     };
     
-    void setupEffectList();
-    Colour getColorForEffect(EffectModule::EffectType type);
+    juce::TextEditor searchBox;
+    juce::TextButton categoryButtons[11]; // 10 categories + All
+    juce::OwnedArray<EffectCard> effectCards;
+    juce::Viewport viewport;
+    juce::Component effectContainer;
     
-    //==============================================================================
-    Label titleLabel;
-    TextEditor searchBar;
-    Viewport viewport;
-    Component contentComponent;
-    OwnedArray<EffectItem> effectItems;
+    juce::String currentCategory = "All";
+    juce::String searchText;
+    
+    void loadEffects();
+    void filterEffects();
+    void updateLayout();
+    void selectCategory(const juce::String& category);
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EffectBrowser)
 };

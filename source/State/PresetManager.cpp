@@ -1,4 +1,4 @@
-#include "PresetManager.h"
+﻿#include "PresetManager.h"
 
 PresetManager::PresetManager()
 {
@@ -273,13 +273,33 @@ void PresetManager::loadUserPresets()
         if (xml != nullptr && xml->hasTagName("GUITAR_PEDAL_RACK_PRESET"))
         {
             ChainPreset preset;
-            preset.name = xml->getStringAttribute("name");
-            preset.category = xml->getStringAttribute("category");
+            preset.name        = xml->getStringAttribute("name");
+            preset.category    = xml->getStringAttribute("category");
             preset.description = xml->getStringAttribute("description");
-            preset.author = xml->getStringAttribute("author");
-            preset.dateCreated = file.getCreationTime();
-            preset.dateModified = file.getLastModificationTime();
+            preset.author      = xml->getStringAttribute("author");
+            preset.dateCreated    = file.getCreationTime();
+            preset.dateModified   = file.getLastModificationTime();
             
+            // â”€â”€ Restore module chain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            if (auto* modulesXml = xml->getChildByName("MODULES"))
+            {
+                for (int i = 0; i < modulesXml->getNumChildElements(); ++i)
+                {
+                    if (auto* mXml = modulesXml->getChildElement(i))
+                    {
+                        if (mXml->hasTagName("MODULE"))
+                        {
+                            ModulePreset m;
+                            m.moduleType  = mXml->getStringAttribute("type");
+                            m.bypassed    = mXml->getBoolAttribute("bypassed", false);
+                            m.wetDryMix   = (float)mXml->getDoubleAttribute("mix", 1.0);
+                            preset.modules.add(m);
+                        }
+                    }
+                }
+            }
+            
+            // â”€â”€ Restore parameter values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (auto* paramsXml = xml->getChildByName("PARAMETERS"))
             {
                 for (int i = 0; i < paramsXml->getNumChildElements(); ++i)
@@ -288,8 +308,8 @@ void PresetManager::loadUserPresets()
                     {
                         if (pXml->hasTagName("PARAM"))
                         {
-                            String id = pXml->getStringAttribute("id");
-                            float val = (float)pXml->getDoubleAttribute("value");
+                            String id  = pXml->getStringAttribute("id");
+                            float  val = (float)pXml->getDoubleAttribute("value");
                             preset.parameterValues[id] = val;
                         }
                     }
@@ -317,16 +337,27 @@ bool PresetManager::savePreset(const ChainPreset& preset)
     File presetFile = userPresetFolder.getChildFile(preset.name + ".gpr");
     
     std::unique_ptr<XmlElement> xml(new XmlElement("GUITAR_PEDAL_RACK_PRESET"));
-    xml->setAttribute("name", preset.name);
-    xml->setAttribute("category", preset.category);
+    xml->setAttribute("name",        preset.name);
+    xml->setAttribute("category",    preset.category);
     xml->setAttribute("description", preset.description);
-    xml->setAttribute("author", preset.author);
+    xml->setAttribute("author",      preset.author);
     
+    // â”€â”€ Serialize module chain â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    auto* modulesXml = xml->createNewChildElement("MODULES");
+    for (const auto& m : preset.modules)
+    {
+        auto* mXml = modulesXml->createNewChildElement("MODULE");
+        mXml->setAttribute("type",     m.moduleType);
+        mXml->setAttribute("bypassed", (int)m.bypassed);
+        mXml->setAttribute("mix",      m.wetDryMix);
+    }
+    
+    // â”€â”€ Serialize parameter values â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     auto* paramsXml = xml->createNewChildElement("PARAMETERS");
     for (const auto& pair : preset.parameterValues)
     {
         auto* pXml = paramsXml->createNewChildElement("PARAM");
-        pXml->setAttribute("id", pair.first);
+        pXml->setAttribute("id",    pair.first);
         pXml->setAttribute("value", pair.second);
     }
     
@@ -365,14 +396,86 @@ bool PresetManager::deletePreset(const String& name)
 
 bool PresetManager::exportPreset(const ChainPreset& preset, const File& file)
 {
-    // TODO: Serialize to JSON format
-    return false;
+    // Serialize to XML (same format as .gpr files)
+    std::unique_ptr<XmlElement> xml(new XmlElement("GUITAR_PEDAL_RACK_PRESET"));
+    xml->setAttribute("name",        preset.name);
+    xml->setAttribute("category",    preset.category);
+    xml->setAttribute("description", preset.description);
+    xml->setAttribute("author",      preset.author);
+
+    auto* modulesXml = xml->createNewChildElement("MODULES");
+    for (const auto& m : preset.modules)
+    {
+        auto* mXml = modulesXml->createNewChildElement("MODULE");
+        mXml->setAttribute("type",     m.moduleType);
+        mXml->setAttribute("bypassed", (int)m.bypassed);
+        mXml->setAttribute("mix",      m.wetDryMix);
+    }
+
+    auto* paramsXml = xml->createNewChildElement("PARAMETERS");
+    for (const auto& pair : preset.parameterValues)
+    {
+        auto* pXml = paramsXml->createNewChildElement("PARAM");
+        pXml->setAttribute("id",    pair.first);
+        pXml->setAttribute("value", pair.second);
+    }
+
+    return xml->writeTo(file);
 }
 
 bool PresetManager::importPreset(const File& file, ChainPreset& outPreset)
 {
-    // TODO: Deserialize from JSON format
-    return false;
+    std::unique_ptr<XmlElement> xml(XmlDocument::parse(file));
+    if (xml == nullptr || !xml->hasTagName("GUITAR_PEDAL_RACK_PRESET"))
+        return false;
+
+    outPreset.name        = xml->getStringAttribute("name");
+    outPreset.category    = xml->getStringAttribute("category");
+    outPreset.description = xml->getStringAttribute("description");
+    outPreset.author      = xml->getStringAttribute("author");
+    outPreset.dateCreated = outPreset.dateModified = Time::getCurrentTime();
+
+    if (auto* modulesXml = xml->getChildByName("MODULES"))
+    {
+        for (int i = 0; i < modulesXml->getNumChildElements(); ++i)
+        {
+            if (auto* mXml = modulesXml->getChildElement(i))
+            {
+                if (mXml->hasTagName("MODULE"))
+                {
+                    ModulePreset m;
+                    m.moduleType = mXml->getStringAttribute("type");
+                    m.bypassed   = mXml->getBoolAttribute("bypassed", false);
+                    m.wetDryMix  = (float)mXml->getDoubleAttribute("mix", 1.0);
+                    outPreset.modules.add(m);
+                }
+            }
+        }
+    }
+
+    if (auto* paramsXml = xml->getChildByName("PARAMETERS"))
+    {
+        for (int i = 0; i < paramsXml->getNumChildElements(); ++i)
+        {
+            if (auto* pXml = paramsXml->getChildElement(i))
+            {
+                if (pXml->hasTagName("PARAM"))
+                {
+                    outPreset.parameterValues[pXml->getStringAttribute("id")] =
+                        (float)pXml->getDoubleAttribute("value");
+                }
+            }
+        }
+    }
+
+    // Add/overwrite in library so it's immediately available
+    auto* existing = library.findPresetByName(outPreset.name);
+    if (existing != nullptr)
+        *existing = outPreset;
+    else
+        library.presets.add(outPreset);
+
+    return true;
 }
 
 StringArray PresetManager::getAllTags() const
@@ -395,98 +498,11 @@ StringArray PresetManager::getAllTags() const
 StringArray PresetManager::getAllCategories() const
 {
     StringArray categories;
-    categories.add("Rock");
-    categories.add("Metal");
-    categories.add("Blues");
-    categories.add("Jazz");
-    categories.add("Clean");
-    categories.add("Lead");
-    categories.add("Rhythm");
+    for (const auto& preset : library.presets)
+    {
+        if (preset.category.isNotEmpty() && !categories.contains(preset.category))
+            categories.add(preset.category);
+    }
+    categories.sort(true);
     return categories;
-}
-
-//==============================================================================
-// Factory Preset Implementations
-
-ChainPreset PresetManager::createCleanBluesPreset()
-{
-    ChainPreset preset;
-    preset.name = "Clean Blues";
-    preset.author = "Factory";
-    preset.description = "Warm clean tone with subtle compression, perfect for blues rhythm";
-    preset.tags.add("blues");
-    preset.tags.add("clean");
-    preset.tags.add("rhythm");
-    preset.category = "Blues";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    // TODO: Add actual module configurations
-    // For now, define the chain structure
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createClassicRockPreset()
-{
-    ChainPreset preset;
-    preset.name = "Classic Rock Rhythm";
-    preset.author = "Factory";
-    preset.description = "AC/DC style crunch tone - perfect for power chords";
-    preset.tags.add("rock");
-    preset.tags.add("crunch");
-    preset.tags.add("rhythm");
-    preset.category = "Rock";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createHighGainMetalPreset()
-{
-    ChainPreset preset;
-    preset.name = "Modern Metal";
-    preset.author = "Factory";
-    preset.description = "Tight high-gain tone for modern metal riffing";
-    preset.tags.add("metal");
-    preset.tags.add("high-gain");
-    preset.tags.add("rhythm");
-    preset.category = "Metal";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createCrunchRhythmPreset()
-{
-    ChainPreset preset;
-    preset.name = "Crunch Rhythm";
-    preset.author = "Factory";
-    preset.description = "Mid-gain crunch for classic rock rhythm playing";
-    preset.tags.add("rock");
-    preset.tags.add("crunch");
-    preset.tags.add("rhythm");
-    preset.category = "Rock";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    return preset;
-}
-
-ChainPreset PresetManager::createSmoothLeadPreset()
-{
-    ChainPreset preset;
-    preset.name = "Smooth Lead";
-    preset.author = "Factory";
-    preset.description = "Singing lead tone with compression and delay";
-    preset.tags.add("lead");
-    preset.tags.add("rock");
-    preset.tags.add("blues");
-    preset.category = "Lead";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
-    
-    return preset;
 }

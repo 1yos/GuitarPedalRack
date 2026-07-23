@@ -47,6 +47,14 @@ public:
 
     AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override;
+    
+    // Public API for UI integration
+    void addEffectToChain(const juce::String& effectId);
+    void removeEffectFromChain(int index);
+    void moveEffectInChain(int fromIndex, int toIndex);
+    void setEffectBypassed(int index, bool shouldBypass);
+    int getEffectChainSize() const;
+    juce::String getEffectNameAtIndex(int index) const;
 
     const String getName() const override;
 
@@ -108,6 +116,9 @@ public:
     float getDspCpuUsage() const { return dspCpuUsage.load(); }
     float getCPUUsage() const { return dspCpuUsage.load(); } // Alias for editor
     
+    float getInputLevel() const { return inputLevel.load(); }
+    float getOutputLevel() const { return outputLevel.load(); }
+    
     //==============================================================================
     // Smart Chain Statistics
     
@@ -134,6 +145,8 @@ private:
     
     String currentPresetName = "Default";
     std::atomic<float> dspCpuUsage { 0.0f };
+    std::atomic<float> inputLevel { 0.0f };
+    std::atomic<float> outputLevel { 0.0f };
     
     // Parameter smoothing
     SmoothedValue<float, ValueSmoothingTypes::Linear> smoothedInputGain;

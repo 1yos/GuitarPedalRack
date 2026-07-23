@@ -1,5 +1,5 @@
 #include "PluginProcessor.h"
-#include "PluginEditor.h"
+#include "UI/ModernPluginEditor.h"
 #include <chrono>
 
 //==============================================================================
@@ -267,7 +267,7 @@ bool GuitarPedalRackProcessor::isMidiEffect() const
 
 double GuitarPedalRackProcessor::getTailLengthSeconds() const
 {
-    return 0.0;
+    return 3.0; // Reverb/delay tails need time to decay
 }
 
 int GuitarPedalRackProcessor::getNumPrograms()
@@ -368,7 +368,17 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     // Bypass all processing if requested
     auto* globalBypassParam = apvts.getRawParameterValue("globalBypass");
     if (globalBypassParam && *globalBypassParam > 0.5f)
+    {
+        inputLevel.store(0.0f);
+        outputLevel.store(0.0f);
         return;
+    }
+    
+    // Track input peak level
+    float inMax = 0.0f;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        inMax = jmax(inMax, buffer.getMagnitude(ch, 0, buffer.getNumSamples()));
+    inputLevel.store(inputLevel.load() * 0.8f + inMax * 0.2f);
     
     // Apply smoothed input gain
     auto* inputGainParam = apvts.getRawParameterValue("globalInputGain");
@@ -420,6 +430,12 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
         }
     }
     
+    // Track output peak level
+    float outMax = 0.0f;
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        outMax = jmax(outMax, buffer.getMagnitude(ch, 0, buffer.getNumSamples()));
+    outputLevel.store(outputLevel.load() * 0.8f + outMax * 0.2f);
+    
     // Compute CPU usage
     auto endTime = std::chrono::high_resolution_clock::now();
     auto elapsedMicros = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
@@ -429,13 +445,9 @@ void GuitarPedalRackProcessor::processBlock(AudioBuffer<float>& buffer, MidiBuff
     if (blockDurationMicros > 0.0)
         usagePercent = (float)((elapsedMicros / blockDurationMicros) * 100.0);
     
-    // Smooth it with an exponential moving average (EMA)
-    // Combine with SmartChain CPU tracking
+    // Smooth CPU with combined DSP chain contribution
     float smartChainCPU = smartSignalChain.getCPUUsage() * 100.0f;
-    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + (usagePercent + smartChainCPU) * 0.025f);
-    
-    // Smooth it with an exponential moving average (EMA)
-    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + usagePercent * 0.05f);
+    dspCpuUsage.store(dspCpuUsage.load() * 0.95f + (usagePercent + smartChainCPU) * 0.05f);
 }
 
 //==============================================================================
@@ -446,37 +458,68 @@ bool GuitarPedalRackProcessor::hasEditor() const
 
 AudioProcessorEditor* GuitarPedalRackProcessor::createEditor()
 {
-    return new GuitarPedalRackEditor(*this);
+    // Use modern UI (Phase 3)
+    return new ModernPluginEditor(*this);
+    
+    // Old UI available as: return new GuitarPedalRackEditor(*this);
 }
 
 //==============================================================================
 void GuitarPedalRackProcessor::getStateInformation(MemoryBlock& destData)
 {
-    // Use APVTS to save all parameter state
+    // Save APVTS parameter state
     auto state = apvts.copyState();
-    
-    // Add custom properties
     state.setProperty("currentPresetName", currentPresetName, nullptr);
     
-    // Serialize to XML
-    std::unique_ptr<XmlElement> xml(state.createXml());
+    // ── Persist the current signal chain order ──────────────────────────────
+    // Stored as "EffectType0,EffectType1,...:bypassed0,bypassed1,..."
+    juce::StringArray types, bypassed;
+    for (int i = 0; i < smartSignalChain.getNumEffects(); ++i)
+    {
+        auto* fx = smartSignalChain.getEffect(i);
+        if (fx)
+        {
+            types.add(fx->getModuleType());
+            bypassed.add(fx->isBypassed() ? "1" : "0");
+        }
+    }
+    state.setProperty("chainTypes",    types.joinIntoString(","),    nullptr);
+    state.setProperty("chainBypassed", bypassed.joinIntoString(","), nullptr);
+    
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
 
 void GuitarPedalRackProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // Restore from APVTS
-    std::unique_ptr<XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
     
-    if (xmlState.get() != nullptr)
+    if (xmlState != nullptr && xmlState->hasTagName(apvts.state.getType()))
     {
-        if (xmlState->hasTagName(apvts.state.getType()))
+        auto state = juce::ValueTree::fromXml(*xmlState);
+        apvts.replaceState(state);
+        
+        currentPresetName = state.getProperty("currentPresetName", "Default").toString();
+        
+        // ── Restore signal chain order ──────────────────────────────────────
+        juce::String typesStr    = state.getProperty("chainTypes",    "").toString();
+        juce::String bypassedStr = state.getProperty("chainBypassed", "").toString();
+        
+        if (typesStr.isNotEmpty())
         {
-            auto state = ValueTree::fromXml(*xmlState);
-            apvts.replaceState(state);
+            auto typeList    = juce::StringArray::fromTokens(typesStr,    ",", "");
+            auto bypassList  = juce::StringArray::fromTokens(bypassedStr, ",", "");
             
-            // Restore custom properties
-            currentPresetName = state.getProperty("currentPresetName", "Default").toString();
+            smartSignalChain.clearAllEffects();
+            
+            for (int i = 0; i < typeList.size(); ++i)
+            {
+                addEffectToChain(typeList[i]);
+                if (i < bypassList.size())
+                    setEffectBypassed(i, bypassList[i] == "1");
+            }
+            
+            connectParametersToSignalChain();
         }
     }
 }
@@ -575,6 +618,26 @@ bool GuitarPedalRackProcessor::loadPreset(const String& presetName)
     {
         currentPresetName = presetName;
         
+        // Reconstruct the DSP signal chain with processing suspended for thread safety
+        suspendProcessing(true);
+        smartSignalChain.clearAllEffects();
+        
+        for (const auto& m : preset.modules)
+        {
+            auto& library = EffectLibrary::getInstance();
+            auto effect = library.createEffect(m.moduleType);
+            if (effect != nullptr)
+            {
+                effect->setBypass(m.bypassed);
+                effect->setWetDryMix(m.wetDryMix);
+                smartSignalChain.addEffect(std::move(effect));
+            }
+        }
+        
+        // Connect the parameters to the newly added modules
+        connectParametersToSignalChain();
+        suspendProcessing(false);
+        
         // Restore all parameters in APVTS
         for (const auto& pair : preset.parameterValues)
         {
@@ -594,13 +657,12 @@ bool GuitarPedalRackProcessor::loadPreset(const String& presetName)
 bool GuitarPedalRackProcessor::saveCurrentAsPreset(const String& presetName)
 {
     ChainPreset preset;
-    preset.name = presetName;
+    preset.name        = presetName;
     preset.description = "User preset";
-    preset.author = "User";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
+    preset.author      = "User";
+    preset.dateCreated = preset.dateModified = Time::getCurrentTime();
     
-    // Save current parameter values
+    // Save current APVTS parameter values
     for (auto* param : getParameters())
     {
         if (auto* rangedParam = dynamic_cast<RangedAudioParameter*>(param))
@@ -608,6 +670,20 @@ bool GuitarPedalRackProcessor::saveCurrentAsPreset(const String& presetName)
             String paramId = rangedParam->paramID;
             float value = apvts.getRawParameterValue(paramId)->load();
             preset.parameterValues[paramId] = value;
+        }
+    }
+    
+    // Save current module chain so the layout is restored on load
+    for (int i = 0; i < smartSignalChain.getNumEffects(); ++i)
+    {
+        auto* fx = smartSignalChain.getEffect(i);
+        if (fx)
+        {
+            ModulePreset mp;
+            mp.moduleType = fx->getModuleType();
+            mp.bypassed   = fx->isBypassed();
+            mp.wetDryMix  = 1.0f;
+            preset.modules.add(mp);
         }
     }
     
@@ -655,4 +731,92 @@ void GuitarPedalRackProcessor::updateParametersFromAPVTS()
 AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new GuitarPedalRackProcessor();
+}
+
+//==============================================================================
+// UI Integration Methods
+//==============================================================================
+
+void GuitarPedalRackProcessor::addEffectToChain(const juce::String& effectId)
+{
+    auto& library = EffectLibrary::getInstance();
+    auto effect = library.createEffect(effectId);
+    
+    if (effect)
+    {
+        smartSignalChain.addEffect(std::move(effect));
+        // Re-run parameter binding so the new effect gets its APVTS pointers
+        connectParametersToSignalChain();
+        DBG("Added effect: " + effectId + " (Total: " + juce::String(smartSignalChain.getNumEffects()) + ")");
+    }
+    else
+    {
+        DBG("Failed to create effect: " + effectId);
+    }
+}
+
+void GuitarPedalRackProcessor::removeEffectFromChain(int index)
+{
+    int sizeBefore = smartSignalChain.getNumEffects();
+    
+    if (index >= 0 && index < sizeBefore)
+    {
+        DBG("PROCESSOR: Removing effect at index " + juce::String(index) + 
+            " (chain size before: " + juce::String(sizeBefore) + ")");
+        
+        // Thread-safe removal: suspend processing while modifying chain
+        suspendProcessing(true);
+        smartSignalChain.removeEffect(index);
+        suspendProcessing(false);
+        
+        int sizeAfter = smartSignalChain.getNumEffects();
+        DBG("PROCESSOR: Effect removed. Chain size after: " + juce::String(sizeAfter));
+        
+        if (sizeBefore == sizeAfter)
+        {
+            DBG("WARNING: Effect was not actually removed from chain!");
+        }
+    }
+    else
+    {
+        DBG("ERROR: Invalid index " + juce::String(index) + 
+            " for chain of size " + juce::String(sizeBefore));
+    }
+}
+
+void GuitarPedalRackProcessor::moveEffectInChain(int fromIndex, int toIndex)
+{
+    if (fromIndex >= 0 && fromIndex < smartSignalChain.getNumEffects() &&
+        toIndex >= 0 && toIndex <= smartSignalChain.getNumEffects() &&
+        fromIndex != toIndex)
+    {
+        smartSignalChain.moveEffect(fromIndex, toIndex);
+        DBG("Moved effect from " + juce::String(fromIndex) + " to " + juce::String(toIndex));
+    }
+}
+
+void GuitarPedalRackProcessor::setEffectBypassed(int index, bool shouldBypass)
+{
+    if (index >= 0 && index < smartSignalChain.getNumEffects())
+    {
+        auto* effect = smartSignalChain.getEffect(index);
+        if (effect)
+        {
+            effect->setBypass(shouldBypass);
+            DBG("Set effect " + juce::String(index) + " bypass: " + (shouldBypass ? "ON" : "OFF"));
+        }
+    }
+}
+
+int GuitarPedalRackProcessor::getEffectChainSize() const
+{
+    return smartSignalChain.getNumEffects();
+}
+
+juce::String GuitarPedalRackProcessor::getEffectNameAtIndex(int index) const
+{
+    auto* effect = const_cast<SmartSignalChain&>(smartSignalChain).getEffect(index);
+    if (effect)
+        return effect->getModuleType();
+    return juce::String();
 }

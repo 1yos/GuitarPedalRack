@@ -49,7 +49,16 @@ void SmartSignalChain::removeEffect(int position)
 {
     if (position >= 0 && position < static_cast<int>(effects.size()))
     {
+        // CRITICAL: Ensure we're not processing while removing
         effects.erase(effects.begin() + position);
+        
+        DBG("SmartSignalChain: Removed effect at position " + String(position) + 
+            ", new size: " + String(effects.size()));
+    }
+    else
+    {
+        DBG("SmartSignalChain: Invalid position " + String(position) + 
+            " for size " + String(effects.size()));
     }
 }
 
@@ -78,6 +87,7 @@ void SmartSignalChain::clearAllEffects()
     effects.clear();
     currentCPUUsage.store(0.0f);
     numActiveEffects.store(0);
+    DBG("SmartSignalChain: Cleared all effects");
 }
 
 AudioModule* SmartSignalChain::getEffect(int position)
