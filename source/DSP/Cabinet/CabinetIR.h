@@ -78,6 +78,7 @@ private:
     float roomMix = 0.0f;
     float outputLevelDb = 0.0f;
     float outputLevel = 1.0f;
+    int   lastCabType = -1; // tracks last seen type param to detect changes
     
     // Physical mic placement DSP simulation variables
     float lpValL = 0.0f;

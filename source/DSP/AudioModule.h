@@ -136,6 +136,15 @@ public:
         parameterPointers[paramName] = paramPtr;
     }
     
+    /** Gets the raw parameter pointer by name (nullptr if not found) */
+    std::atomic<float>* getParameterPointer(const String& paramName) const
+    {
+        auto it = parameterPointers.find(paramName);
+        if (it != parameterPointers.end())
+            return it->second;
+        return nullptr;
+    }
+    
     /** Gets a parameter value by name (returns 0.0 if not found) */
     float getParameterValue(const String& paramName) const
     {

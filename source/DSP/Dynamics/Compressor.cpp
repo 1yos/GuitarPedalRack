@@ -11,8 +11,9 @@ void Compressor::prepare(double sampleRate, int maximumExpectedSamplesPerBlock)
     AudioModule::prepare(sampleRate, maximumExpectedSamplesPerBlock);
     
     envelopeState.resize(2, 0.0f);
-    rmsBuffer.resize(rmsBufferSize, 0.0f);
-    rmsBufferIndex = 0;
+    // FIX: one RMS ring buffer per channel
+    rmsBuffers.assign(2, std::vector<float>(rmsBufferSize, 0.0f));
+    rmsBufferIndices.assign(2, 0);
     
     updateCoefficients();
     reset();
@@ -21,8 +22,9 @@ void Compressor::prepare(double sampleRate, int maximumExpectedSamplesPerBlock)
 void Compressor::reset()
 {
     std::fill(envelopeState.begin(), envelopeState.end(), 0.0f);
-    std::fill(rmsBuffer.begin(), rmsBuffer.end(), 0.0f);
-    rmsBufferIndex = 0;
+    for (auto& buf : rmsBuffers)
+        std::fill(buf.begin(), buf.end(), 0.0f);
+    std::fill(rmsBufferIndices.begin(), rmsBufferIndices.end(), 0);
 }
 
 void Compressor::setThreshold(float thresholdDb_)
@@ -77,6 +79,11 @@ void Compressor::processInternal(AudioBuffer<float>& buffer)
     
     if ((int)envelopeState.size() < numChannels)
         envelopeState.resize(numChannels, 0.0f);
+    if ((int)rmsBuffers.size() < numChannels)
+    {
+        rmsBuffers.resize(numChannels, std::vector<float>(rmsBufferSize, 0.0f));
+        rmsBufferIndices.resize(numChannels, 0);
+    }
         
     float maxGR = 0.0f;
     
@@ -84,17 +91,19 @@ void Compressor::processInternal(AudioBuffer<float>& buffer)
     {
         auto* channelData = buffer.getWritePointer(channel);
         float& envelope = envelopeState[channel];
+        auto& rmsBuffer  = rmsBuffers[channel];
+        auto& rmsIdx     = rmsBufferIndices[channel];
         
         for (int sample = 0; sample < numSamples; ++sample)
         {
             float inputSample = channelData[sample];
             float inputLevel = std::abs(inputSample);
             
-            // RMS detection (optional)
+            // RMS detection (per-channel buffer — no interleaving)
             if (detectionMode == DetectionMode::RMS)
             {
-                rmsBuffer[rmsBufferIndex] = inputSample * inputSample;
-                rmsBufferIndex = (rmsBufferIndex + 1) % rmsBufferSize;
+                rmsBuffer[rmsIdx] = inputSample * inputSample;
+                rmsIdx = (rmsIdx + 1) % rmsBufferSize;
                 
                 float rmsSum = 0.0f;
                 for (int i = 0; i < rmsBufferSize; ++i)

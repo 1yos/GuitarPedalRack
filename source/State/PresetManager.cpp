@@ -396,14 +396,86 @@ bool PresetManager::deletePreset(const String& name)
 
 bool PresetManager::exportPreset(const ChainPreset& preset, const File& file)
 {
-    // TODO: Serialize to JSON format
-    return false;
+    // Serialize to XML (same format as .gpr files)
+    std::unique_ptr<XmlElement> xml(new XmlElement("GUITAR_PEDAL_RACK_PRESET"));
+    xml->setAttribute("name",        preset.name);
+    xml->setAttribute("category",    preset.category);
+    xml->setAttribute("description", preset.description);
+    xml->setAttribute("author",      preset.author);
+
+    auto* modulesXml = xml->createNewChildElement("MODULES");
+    for (const auto& m : preset.modules)
+    {
+        auto* mXml = modulesXml->createNewChildElement("MODULE");
+        mXml->setAttribute("type",     m.moduleType);
+        mXml->setAttribute("bypassed", (int)m.bypassed);
+        mXml->setAttribute("mix",      m.wetDryMix);
+    }
+
+    auto* paramsXml = xml->createNewChildElement("PARAMETERS");
+    for (const auto& pair : preset.parameterValues)
+    {
+        auto* pXml = paramsXml->createNewChildElement("PARAM");
+        pXml->setAttribute("id",    pair.first);
+        pXml->setAttribute("value", pair.second);
+    }
+
+    return xml->writeTo(file);
 }
 
 bool PresetManager::importPreset(const File& file, ChainPreset& outPreset)
 {
-    // TODO: Deserialize from JSON format
-    return false;
+    std::unique_ptr<XmlElement> xml(XmlDocument::parse(file));
+    if (xml == nullptr || !xml->hasTagName("GUITAR_PEDAL_RACK_PRESET"))
+        return false;
+
+    outPreset.name        = xml->getStringAttribute("name");
+    outPreset.category    = xml->getStringAttribute("category");
+    outPreset.description = xml->getStringAttribute("description");
+    outPreset.author      = xml->getStringAttribute("author");
+    outPreset.dateCreated = outPreset.dateModified = Time::getCurrentTime();
+
+    if (auto* modulesXml = xml->getChildByName("MODULES"))
+    {
+        for (int i = 0; i < modulesXml->getNumChildElements(); ++i)
+        {
+            if (auto* mXml = modulesXml->getChildElement(i))
+            {
+                if (mXml->hasTagName("MODULE"))
+                {
+                    ModulePreset m;
+                    m.moduleType = mXml->getStringAttribute("type");
+                    m.bypassed   = mXml->getBoolAttribute("bypassed", false);
+                    m.wetDryMix  = (float)mXml->getDoubleAttribute("mix", 1.0);
+                    outPreset.modules.add(m);
+                }
+            }
+        }
+    }
+
+    if (auto* paramsXml = xml->getChildByName("PARAMETERS"))
+    {
+        for (int i = 0; i < paramsXml->getNumChildElements(); ++i)
+        {
+            if (auto* pXml = paramsXml->getChildElement(i))
+            {
+                if (pXml->hasTagName("PARAM"))
+                {
+                    outPreset.parameterValues[pXml->getStringAttribute("id")] =
+                        (float)pXml->getDoubleAttribute("value");
+                }
+            }
+        }
+    }
+
+    // Add/overwrite in library so it's immediately available
+    auto* existing = library.findPresetByName(outPreset.name);
+    if (existing != nullptr)
+        *existing = outPreset;
+    else
+        library.presets.add(outPreset);
+
+    return true;
 }
 
 StringArray PresetManager::getAllTags() const

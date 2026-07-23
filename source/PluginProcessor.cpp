@@ -637,13 +637,12 @@ bool GuitarPedalRackProcessor::loadPreset(const String& presetName)
 bool GuitarPedalRackProcessor::saveCurrentAsPreset(const String& presetName)
 {
     ChainPreset preset;
-    preset.name = presetName;
+    preset.name        = presetName;
     preset.description = "User preset";
-    preset.author = "User";
-    preset.dateCreated = Time::getCurrentTime();
-    preset.dateModified = preset.dateCreated;
+    preset.author      = "User";
+    preset.dateCreated = preset.dateModified = Time::getCurrentTime();
     
-    // Save current parameter values
+    // Save current APVTS parameter values
     for (auto* param : getParameters())
     {
         if (auto* rangedParam = dynamic_cast<RangedAudioParameter*>(param))
@@ -651,6 +650,20 @@ bool GuitarPedalRackProcessor::saveCurrentAsPreset(const String& presetName)
             String paramId = rangedParam->paramID;
             float value = apvts.getRawParameterValue(paramId)->load();
             preset.parameterValues[paramId] = value;
+        }
+    }
+    
+    // Save current module chain so the layout is restored on load
+    for (int i = 0; i < smartSignalChain.getNumEffects(); ++i)
+    {
+        auto* fx = smartSignalChain.getEffect(i);
+        if (fx)
+        {
+            ModulePreset mp;
+            mp.moduleType = fx->getModuleType();
+            mp.bypassed   = fx->isBypassed();
+            mp.wetDryMix  = 1.0f;
+            preset.modules.add(mp);
         }
     }
     
@@ -712,6 +725,8 @@ void GuitarPedalRackProcessor::addEffectToChain(const juce::String& effectId)
     if (effect)
     {
         smartSignalChain.addEffect(std::move(effect));
+        // Re-run parameter binding so the new effect gets its APVTS pointers
+        connectParametersToSignalChain();
         DBG("Added effect: " + effectId + " (Total: " + juce::String(smartSignalChain.getNumEffects()) + ")");
     }
     else

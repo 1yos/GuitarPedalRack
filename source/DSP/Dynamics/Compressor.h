@@ -103,8 +103,9 @@ private:
     float releaseCoeff = 0.0f;
     
     std::vector<float> envelopeState;  // Per-channel envelope
-    std::vector<float> rmsBuffer;      // For RMS detection
-    int rmsBufferIndex = 0;
+    // FIX: Per-channel RMS buffers so L/R don't interleave
+    std::vector<std::vector<float>> rmsBuffers; // [channel][sample]
+    std::vector<int> rmsBufferIndices;          // per-channel write index
     static constexpr int rmsBufferSize = 64;
     
     //==============================================================================

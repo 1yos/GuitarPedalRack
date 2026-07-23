@@ -118,8 +118,25 @@ void CabinetIR::processInternal(AudioBuffer<float>& buffer)
     auto* bypassParam = parameterPointers["bypass"];
     if (bypassParam && bypassParam->load() > 0.5f)
         return;
-        
-    // 1. Process through convolution
+    
+    // FIX: Read "type" parameter and reload IR if it changed
+    if (hasParameter("type"))
+    {
+        int newType = static_cast<int>(getParameterValue("type"));
+        if (newType != lastCabType && currentSampleRate > 0.0)
+        {
+            lastCabType = newType;
+            static const char* irNames[] = {
+                "Default 4x12",          // 0 = 4x12 V30
+                "4x12 Greenback - SM57", // 1 = 4x12 Greenback
+                "2x12 Combo - SM57",     // 2 = 2x12 Vintage
+                "1x12 Celestion - U87"   // 3 = 1x12 Classic
+            };
+            const char* name = (newType >= 0 && newType < 4) ? irNames[newType] : irNames[0];
+            // loadBuiltInIR regenerates the IR and reloads convolution
+            loadBuiltInIR(juce::String(name));
+        }
+    }
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
     convolution.process(context);

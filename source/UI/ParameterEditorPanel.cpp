@@ -678,7 +678,6 @@ void ParameterEditorPanel::createParameterControls()
     if (!currentEffect)
         return;
     
-    // Get parameter info for this effect
     auto params = getParameterInfoForEffect(effectName);
     
     if (params.isEmpty())
@@ -687,18 +686,34 @@ void ParameterEditorPanel::createParameterControls()
         return;
     }
     
-    // Create a knob for each parameter
     for (const auto& param : params)
     {
         auto* knob = paramKnobs.add(new VintageKnob(param.label, getCategoryColor()));
         addAndMakeVisible(knob);
         
-        // Set range and initial value
         knob->setRange(param.min, param.max);
-        knob->setValue(param.defaultValue, false);
         knob->setValueSuffix(param.suffix);
         
-        // Connect to the effect's parameter setter
+        // FIX: Read the actual current value from the effect instead of hardcoded default.
+        // Query via the same setter path in reverse — use AudioModule::getParameterValue
+        // to pull from APVTS pointer, then fall back to the hardcoded default.
+        float currentVal = param.defaultValue;
+        {
+            // Try to get live value from the parameter pointer attached to the module
+            auto* ptr = currentEffect->getParameterPointer(param.name);
+            if (ptr != nullptr)
+            {
+                // The pointer holds the raw APVTS value. Map it back to the knob range
+                // using the same normalisable range logic.
+                float rawVal = ptr->load();
+                // Only use it if it's within the declared range (sanity check)
+                if (rawVal >= param.min && rawVal <= param.max)
+                    currentVal = rawVal;
+            }
+        }
+        
+        knob->setValue(currentVal, false);
+        
         knob->onValueChange = [this, paramName = param.name](float value)
         {
             setEffectParameter(paramName, value);
@@ -992,6 +1007,8 @@ void ParameterEditorPanel::setEffectParameter(const juce::String& paramName, flo
         if (p=="threshold") e->setThreshold(value);
         else if (p=="ratio") e->setRatio(value);
         else if (p=="attack") e->setAttack(value);
+        else if (p=="release") e->setRelease(value);
+        else if (p=="makeup") e->setMakeupGain(value);
     }
     else if (auto* e = dynamic_cast<NoiseGate*>(currentEffect))
     {
@@ -1073,11 +1090,19 @@ void ParameterEditorPanel::setEffectParameter(const juce::String& paramName, flo
         else if (p=="high") e->setBandGain(2, value);
     }
     // â”€â”€ AMP / CABINET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    else if (auto* e = dynamic_cast<CabinetIR*>(currentEffect))
+    {
+        if (p=="mix")        e->setMicPosition(value);
+        else if (p=="lowcut")  e->setRoomMix(value);
+        else if (p=="highcut") e->setOutputLevel((value - 0.5f) * 20.0f);
+    }
     else if (auto* e = dynamic_cast<AmpSimulator*>(currentEffect))
     {
         if (p=="gain") e->setGain(value);
         else if (p=="bass") e->setBass(value);
         else if (p=="middle"||p=="mid") e->setMid(value);
+        else if (p=="treble") e->setTreble(value);
+        else if (p=="presence") e->setPresence(value);
     }
 
     DBG("Parameter changed: " + paramName + " = " + juce::String(value));
