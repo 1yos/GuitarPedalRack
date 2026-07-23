@@ -132,9 +132,9 @@ void CabinetIR::processInternal(AudioBuffer<float>& buffer)
                 "2x12 Combo - SM57",     // 2 = 2x12 Vintage
                 "1x12 Celestion - U87"   // 3 = 1x12 Classic
             };
-            const char* name = (newType >= 0 && newType < 4) ? irNames[newType] : irNames[0];
+            const char* cabName = (newType >= 0 && newType < 4) ? irNames[newType] : irNames[0];
             // loadBuiltInIR regenerates the IR and reloads convolution
-            loadBuiltInIR(juce::String(name));
+            loadBuiltInIR(juce::String(cabName));
         }
     }
     juce::dsp::AudioBlock<float> block(buffer);
@@ -147,16 +147,17 @@ void CabinetIR::processInternal(AudioBuffer<float>& buffer)
     float distance = getParameterValue("distance");
     float axis = getParameterValue("axis");
     
-    // Calculate off-axis distance
+    // Calculate off-axis factor (micX/Y distance + axis angle contribution)
+    float axisFactor = axis / 90.0f;
     float offAxisRad = std::sqrt(micX*micX + micY*micY);
-    offAxisRad = jmin(1.0f, offAxisRad);
+    offAxisRad = jmin(1.0f, offAxisRad + axisFactor * 0.3f);
     
     // Lowpass cutoff frequency (15kHz to 1.5kHz based on axis and distance)
     float lpCutoff = 15000.0f - (offAxisRad * 10000.0f) - (distance * 3000.0f);
     lpCutoff = jlimit(1000.0f, 20000.0f, lpCutoff);
     
     // Map cutoff to one-pole coefficient: coeff = 1 - exp(-2 * pi * f / fs)
-    float coeff = 1.0f - std::exp(-2.0f * MathConstants<float>::pi * lpCutoff / currentSampleRate);
+    float coeff = 1.0f - std::exp(-2.0f * MathConstants<float>::pi * lpCutoff / static_cast<float>(currentSampleRate));
     coeff = jlimit(0.001f, 1.0f, coeff);
     
     // Delay time in samples (0 to 5 ms, e.g. 0 to 220 samples at 44.1kHz)
@@ -235,13 +236,37 @@ void CabinetIR::loadDefaultIR()
 
 AudioBuffer<float> CabinetIR::generateDefaultIR()
 {
-    // Generate a simple IR that simulates a 4x12 cabinet frequency response
-    // This is a fallback when no IR is loaded
+    // Generate a simple IR that simulates a cabinet frequency response
+    // Vary the decay and frequency characteristics based on the selected cabinet type
     
     const int irLength = 1024;  // Short IR
     AudioBuffer<float> ir(2, irLength);
     
     Random random;
+    
+    // Choose parameters based on cabinet type
+    float decayRate = 6.0f;     // exponential decay speed (smaller = larger box / longer resonance)
+    float frequency = 0.3f;     // resonant frequency multiplier
+    float noiseAmount = 0.1f;   // high-frequency air/resonance noise
+    
+    if (currentIRName.contains("Greenback"))
+    {
+        decayRate = 8.0f;       // faster decay, tighter bass
+        frequency = 0.45f;      // higher resonant frequency (more mid-focus)
+        noiseAmount = 0.08f;
+    }
+    else if (currentIRName.contains("Combo") || currentIRName.contains("2x12"))
+    {
+        decayRate = 10.0f;      // faster decay, less cabinet volume resonance
+        frequency = 0.6f;       // bright, punchy mid-high resonance
+        noiseAmount = 0.05f;
+    }
+    else if (currentIRName.contains("Classic") || currentIRName.contains("1x12"))
+    {
+        decayRate = 12.0f;      // extremely fast decay, small box
+        frequency = 0.8f;       // very bright, focused peak
+        noiseAmount = 0.03f;
+    }
     
     for (int channel = 0; channel < 2; ++channel)
     {
@@ -250,10 +275,10 @@ AudioBuffer<float> CabinetIR::generateDefaultIR()
         for (int i = 0; i < irLength; ++i)
         {
             // Exponential decay envelope
-            float decay = std::exp(-6.0f * i / irLength);
+            float decay = std::exp(-decayRate * i / irLength);
             
-            // Add some high-frequency content (simulates cabinet resonance)
-            float sample = decay * (std::sin(i * 0.3f) + random.nextFloat() * 0.1f - 0.05f);
+            // Add some frequency content (simulates cabinet resonance and microphone pickup)
+            float sample = decay * (std::sin(i * frequency) + random.nextFloat() * noiseAmount - noiseAmount * 0.5f);
             
             channelData[i] = sample;
         }

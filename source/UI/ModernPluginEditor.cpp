@@ -129,32 +129,7 @@ ModernPluginEditor::ModernPluginEditor(GuitarPedalRackProcessor& p)
     };
     
     // Synchronize UI with processor's active chain on start
-    auto& chain = audioProcessor.getSignalChain();
-    for (int i = 0; i < audioProcessor.getEffectChainSize(); ++i)
-    {
-        auto* effect = chain.getEffect(i);
-        if (effect != nullptr)
-        {
-            juce::String type = effect->getName();
-            juce::String moduleType = effect->getModuleType();
-            
-            juce::String catName = "Utility";
-            if (moduleType == "NoiseGate" || moduleType == "Compressor") catName = "Dynamics";
-            else if (moduleType == "TubeOverdrive" || moduleType == "Distortion") catName = "Drive";
-            else if (moduleType == "Chorus") catName = "Modulation";
-            else if (moduleType == "AmpSimulator") catName = "Amp";
-            else if (moduleType == "ReverbEffect") catName = "Reverb";
-            else if (moduleType == "CabinetIR") catName = "Cabinet";
-            else if (moduleType == "Delay") catName = "Delay";
-            else if (moduleType == "EQ" || moduleType == "ParametricEQ") catName = "EQ";
-            
-            pedalBoardView.addPedal(type, catName);
-            
-            auto* pedal = pedalBoardView.getPedalSlot(i);
-            if (pedal)
-                pedal->setBypassed(effect->isBypassed());
-        }
-    }
+    syncUIWithProcessorChain();
     
     // Select first pedal by default on startup if exists
     if (pedalBoardView.getPedalCount() > 0)
@@ -305,8 +280,8 @@ void ModernPluginEditor::timerCallback()
 void ModernPluginEditor::handleEffectSelected(int index)
 {
     // Show parameter editor for selected effect
-    auto* effect = audioProcessor.getSignalChain().getEffect(index);
-    if (effect)
+    auto* selectedEffect = audioProcessor.getSignalChain().getEffect(index);
+    if (selectedEffect)
     {
         juce::String effectName, category;
         
@@ -319,7 +294,7 @@ void ModernPluginEditor::handleEffectSelected(int index)
         
         if (effectName.isNotEmpty())
         {
-            parameterEditor.setEffect(effect, effectName, category);
+            parameterEditor.setEffect(selectedEffect, effectName, category);
         }
     }
     
@@ -344,6 +319,7 @@ void ModernPluginEditor::handleEffectRemoved(int index)
     audioProcessor.removeEffectFromChain(index);
     
     int sizeAfter = audioProcessor.getEffectChainSize();
+    juce::ignoreUnused(sizeBefore, sizeAfter);
     
     DBG("Effect removed: idx=" + juce::String(index) + 
         " chain: " + juce::String(sizeBefore) + "->" + juce::String(sizeAfter));
@@ -441,42 +417,8 @@ void ModernPluginEditor::handlePresetSelected(const juce::String& presetName)
         return;
     }
     
-    // Rebuild the UI chain to match the preset's module list
-    ChainPreset preset;
-    audioProcessor.getPresetManager().loadPreset(presetName, preset);
-    
-    if (!preset.modules.isEmpty())
-    {
-        // Clear current chain (processor already updated by loadPreset above;
-        // rebuild it from the module list so DSP + UI stay in sync)
-        while (audioProcessor.getEffectChainSize() > 0)
-            audioProcessor.removeEffectFromChain(0);
-        pedalBoardView.clearAllPedals();
-        
-        // Re-add modules from preset
-        for (const auto& module : preset.modules)
-        {
-            audioProcessor.addEffectToChain(module.moduleType);
-            
-            juce::String catName = "Utility";
-            if (module.moduleType == "NoiseGate" || module.moduleType == "Compressor") catName = "Dynamics";
-            else if (module.moduleType.containsIgnoreCase("Overdrive") || module.moduleType.containsIgnoreCase("Drive")) catName = "Drive";
-            else if (module.moduleType.containsIgnoreCase("Distortion") || module.moduleType.containsIgnoreCase("Fuzz")) catName = "Drive";
-            else if (module.moduleType == "Chorus" || module.moduleType.containsIgnoreCase("Flanger")) catName = "Modulation";
-            else if (module.moduleType.containsIgnoreCase("Amp")) catName = "Amp";
-            else if (module.moduleType.containsIgnoreCase("Reverb")) catName = "Reverb";
-            else if (module.moduleType.containsIgnoreCase("Cabinet") || module.moduleType.containsIgnoreCase("Cab")) catName = "Cabinet";
-            else if (module.moduleType.containsIgnoreCase("Delay")) catName = "Delay";
-            else if (module.moduleType.containsIgnoreCase("EQ")) catName = "EQ";
-            
-            pedalBoardView.addPedal(module.moduleType, catName);
-            int idx = pedalBoardView.getPedalCount() - 1;
-            auto* pedal = pedalBoardView.getPedalSlot(idx);
-            if (pedal)
-                pedal->setBypassed(module.bypassed);
-            audioProcessor.setEffectBypassed(idx, module.bypassed);
-        }
-    }
+    // Synchronize UI with processor's active chain
+    syncUIWithProcessorChain();
     
     updateStatus();
     
@@ -574,4 +516,39 @@ void ModernPluginEditor::handleSaveNewPreset()
     }), true);
     
     window.release();
+}
+
+void ModernPluginEditor::syncUIWithProcessorChain()
+{
+    pedalBoardView.clearAllPedals();
+    
+    auto& chain = audioProcessor.getSignalChain();
+    for (int i = 0; i < audioProcessor.getEffectChainSize(); ++i)
+    {
+        auto* activeEffect = chain.getEffect(i);
+        if (activeEffect != nullptr)
+        {
+            juce::String type = activeEffect->getName();
+            juce::String moduleType = activeEffect->getModuleType();
+            
+            juce::String catName = "Utility";
+            if (moduleType == "NoiseGate" || moduleType == "Compressor") catName = "Dynamics";
+            else if (moduleType.containsIgnoreCase("Overdrive") || moduleType.containsIgnoreCase("Drive")) catName = "Drive";
+            else if (moduleType.containsIgnoreCase("Distortion") || moduleType.containsIgnoreCase("Fuzz")) catName = "Drive";
+            else if (moduleType == "Chorus" || moduleType.containsIgnoreCase("Flanger")) catName = "Modulation";
+            else if (moduleType.containsIgnoreCase("Amp")) catName = "Amp";
+            else if (moduleType == "Reverb" || moduleType == "ReverbEffect") catName = "Reverb";
+            else if (moduleType.containsIgnoreCase("Cabinet") || moduleType.containsIgnoreCase("Cab")) catName = "Cabinet";
+            else if (moduleType.containsIgnoreCase("Delay")) catName = "Delay";
+            else if (moduleType.containsIgnoreCase("EQ")) catName = "EQ";
+            
+            pedalBoardView.addPedal(type, catName);
+            
+            auto* pedal = pedalBoardView.getPedalSlot(i);
+            if (pedal)
+                pedal->setBypassed(activeEffect->isBypassed());
+        }
+    }
+    
+    updateStatus();
 }

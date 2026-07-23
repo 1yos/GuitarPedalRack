@@ -149,6 +149,7 @@ private:
     void toggleEditor();
     void togglePresetBrowser();
     void updateStatus();
+    void syncUIWithProcessorChain();
     // MODE SWITCHING REMOVED - pedal mode only
     
     GuitarPedalRackProcessor& audioProcessor;

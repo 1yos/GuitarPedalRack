@@ -246,10 +246,34 @@ Colour EffectLibrary::getCategoryColor(EffectCategory category)
 
 std::unique_ptr<AudioModule> EffectLibrary::createEffect(const String& effectId)
 {
+    // 1. Try exact match first
     auto it = effectRegistry.find(effectId);
     if (it != effectRegistry.end())
     {
         return it->second.factory();
+    }
+    
+    // 2. Try case-insensitive lookup
+    for (const auto& pair : effectRegistry)
+    {
+        if (pair.first.equalsIgnoreCase(effectId))
+        {
+            return pair.second.factory();
+        }
+    }
+    
+    // 3. Fallbacks for name mappings
+    if (effectId.equalsIgnoreCase("ReverbEffect"))
+    {
+        auto itRev = effectRegistry.find("reverb");
+        if (itRev != effectRegistry.end())
+            return itRev->second.factory();
+    }
+    else if (effectId.equalsIgnoreCase("ParametricEQ"))
+    {
+        auto itEQ = effectRegistry.find("parametricEQ");
+        if (itEQ != effectRegistry.end())
+            return itEQ->second.factory();
     }
     
     DBG("Error: Effect '" + effectId + "' not found in library!");

@@ -618,6 +618,26 @@ bool GuitarPedalRackProcessor::loadPreset(const String& presetName)
     {
         currentPresetName = presetName;
         
+        // Reconstruct the DSP signal chain with processing suspended for thread safety
+        suspendProcessing(true);
+        smartSignalChain.clearAllEffects();
+        
+        for (const auto& m : preset.modules)
+        {
+            auto& library = EffectLibrary::getInstance();
+            auto effect = library.createEffect(m.moduleType);
+            if (effect != nullptr)
+            {
+                effect->setBypass(m.bypassed);
+                effect->setWetDryMix(m.wetDryMix);
+                smartSignalChain.addEffect(std::move(effect));
+            }
+        }
+        
+        // Connect the parameters to the newly added modules
+        connectParametersToSignalChain();
+        suspendProcessing(false);
+        
         // Restore all parameters in APVTS
         for (const auto& pair : preset.parameterValues)
         {
