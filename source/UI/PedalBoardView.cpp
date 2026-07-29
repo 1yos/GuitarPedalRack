@@ -99,6 +99,12 @@ void PedalBoardView::addPedal(const juce::String& effectName, const juce::String
     pedal->onDragStarted = [this](PedalSlot* s, juce::Point<int> p) { handleDragStarted(s, p); };
     pedal->onDragMoved = [this](PedalSlot* s, juce::Point<int> p) { handleDragMoved(s, p); };
     pedal->onDragEnded = [this](PedalSlot* s) { handleDragEnded(s); };
+    pedal->onKnobChanged = [this](PedalSlot* s, int knobIdx, float val)
+    {
+        int index = pedals.indexOf(s);
+        if (index >= 0 && onPedalKnobChanged)
+            onPedalKnobChanged(index, knobIdx, val);
+    };
     
     addAndMakeVisible(pedal);
     pedals.add(pedal);

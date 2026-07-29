@@ -2,22 +2,8 @@
 
 #include "../JuceHeader.h"
 #include "Materials.h"
+#include "../DSP/AudioModule.h"
 
-/**
- * PedalSlot - Boutique guitar pedal representation
- * 
- * Professional quality features:
- * - Powder-coated metal chassis
- * - Machined aluminum knobs with rubber grips
- * - Glass LED indicator with volumetric glow
- * - Soft rubber footswitch
- * - Stainless steel screws
- * - Realistic input/output jacks
- * - Professional typography
- * - Studio lighting response
- * - Natural material aging
- * - Smooth animations
- */
 class PedalSlot : public juce::Component,
                   public juce::Timer
 {
@@ -51,6 +37,11 @@ public:
     juce::Colour getCategoryColor() const;
     juce::Colour getEnclosureColor() const;
     
+    // ── DSP link ─────────────────────────────────────────────────────────────
+    // Call this after the effect is created so on-pedal knobs drive real DSP
+    void setAudioModule(AudioModule* module) { audioModule = module; }
+    AudioModule* getAudioModule() const { return audioModule; }
+    
     // Knob labels (effect-specific)
     juce::String getFirstKnobLabel() const;
     juce::String getSecondKnobLabel() const;
@@ -65,6 +56,9 @@ public:
     void startDragging();
     void stopDragging();
     
+    // Helper: map knob index to the parameter name for this effect (also used by ModernPluginEditor)
+    juce::String getParamNameForKnob(int knobIndex) const;
+    
     // Callbacks
     std::function<void(PedalSlot*)> onSelected;
     std::function<void(PedalSlot*)> onBypassToggled;
@@ -72,10 +66,13 @@ public:
     std::function<void(PedalSlot*, juce::Point<int>)> onDragStarted;
     std::function<void(PedalSlot*, juce::Point<int>)> onDragMoved;
     std::function<void(PedalSlot*)> onDragEnded;
+    // Fired when an on-pedal knob is dragged: (knobIndex 0-2, newValue 0-1)
+    std::function<void(PedalSlot*, int knobIndex, float value)> onKnobChanged;
     
 private:
     juce::String effectName;
     juce::String category;
+    AudioModule* audioModule = nullptr;  // non-owning pointer to the live DSP effect
     
     bool hovered = false;
     bool bypassed = false;
@@ -87,18 +84,21 @@ private:
     // Animation
     float ledBrightness = 1.0f;
     float ledPhase = 0.0f;
-    float hoverLift = 0.0f; // Hover animation (0 to 1)
+    float hoverLift = 0.0f;
     
-    // Knob values and interaction
+    // Knob values — kept in sync with APVTS via timerCallback
     float knob1Value = 0.5f;
     float knob2Value = 0.5f;
     float knob3Value = 0.5f;
-    int activeKnob = -1; // -1 = none, 0-2 = which knob
+    int activeKnob = -1;
     float dragStartValue = 0.0f;
     juce::Point<int> dragStartPos;
     juce::Rectangle<float> knob1Bounds;
     juce::Rectangle<float> knob2Bounds;
     juce::Rectangle<float> knob3Bounds;
+    
+    // Read current value from APVTS pointer (0..1 normalised to knob range)
+    float readKnobValueFromDSP(int knobIndex) const;
     
     // Hit areas
     juce::Rectangle<float> footswitchArea;
@@ -115,7 +115,7 @@ private:
     void drawJacks(juce::Graphics& g);
     void drawScrews(juce::Graphics& g, juce::Rectangle<float> bounds);
     void drawRubberFeet(juce::Graphics& g, juce::Rectangle<float> bounds);
-    void drawWornEnclosure(juce::Graphics& g, juce::Rectangle<float> bounds); // Legacy function kept for reference
+    void drawWornEnclosure(juce::Graphics& g, juce::Rectangle<float> bounds);
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PedalSlot)
 };

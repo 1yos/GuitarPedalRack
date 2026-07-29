@@ -50,6 +50,8 @@ public:
     std::function<void(int index)> onPedalBypassToggled;
     std::function<void(int index)> onPedalRemoved;
     std::function<void(int fromIndex, int toIndex)> onPedalMoved;
+    // Fired when an on-pedal knob is dragged: (pedalIndex, knobIndex 0-2, value 0-1)
+    std::function<void(int pedalIndex, int knobIndex, float value)> onPedalKnobChanged;
     
     // ScrollBar::Listener
     void scrollBarMoved(juce::ScrollBar* bar, double newRangeStart) override;

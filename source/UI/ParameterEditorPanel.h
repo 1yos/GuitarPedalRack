@@ -80,6 +80,25 @@ public:
     void clearEffect();
     bool isEditingEffect() const { return currentEffect != nullptr; }
     
+    // Public wrappers used by ModernPluginEditor for on-pedal knob sync
+    void setEffectParameterPublic(const juce::String& paramName, float value)
+    {
+        setEffectParameter(paramName, value);
+    }
+    // Point the setter at a specific effect without rebuilding the panel
+    void setEffectForKnobSync(AudioModule* effect, const juce::String& name, const juce::String& category)
+    {
+        currentEffect   = effect;
+        effectName      = name;
+        effectCategory  = category;
+    }
+    // Update a specific knob visual without rebuilding all controls
+    void refreshKnob(int knobIndex, float value)
+    {
+        if (knobIndex >= 0 && knobIndex < paramKnobs.size())
+            paramKnobs[knobIndex]->setValue(value, juce::sendNotification);
+    }
+    
     std::function<void()> onClose;
     std::function<void(bool)> onBypassToggled;
     

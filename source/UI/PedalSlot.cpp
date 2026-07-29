@@ -2,6 +2,66 @@
 #include "Materials.h"
 #include "WornTextures.h"
 
+// ─── param-name tables (must match getParameterInfoForEffect order) ──────────
+// Returns the ParameterEditorPanel param name for knob 0/1/2 of this effect.
+juce::String PedalSlot::getParamNameForKnob(int idx) const
+{
+    juce::String n = effectName.toLowerCase();
+    // Drive / overdrive
+    if (n.contains("gate")||n.contains("noisegate")) {
+        const char* t[] = {"threshold","attack","release"}; return t[idx];
+    }
+    if (n.contains("comp")||n.contains("compressor")) {
+        const char* t[] = {"threshold","ratio","makeup"}; return t[idx];
+    }
+    if (n.contains("limiter")) {
+        const char* t[] = {"threshold","release","makeup"}; return t[idx];
+    }
+    if (n.contains("overdrive")||n.contains("drive")||n.contains("distortion")
+        ||n.contains("fuzz")||n.contains("rat")||n.contains("muff")) {
+        const char* t[] = {"gain","tone","level"}; return t[idx];
+    }
+    if (n.contains("delay")||n.contains("echo")) {
+        const char* t[] = {"time","feedback","mix"}; return t[idx];
+    }
+    if (n.contains("reverb")||n.contains("plate")||n.contains("spring")||n.contains("hall")) {
+        const char* t[] = {"size","decay","mix"}; return t[idx];
+    }
+    if (n.contains("chorus")||n.contains("flanger")) {
+        const char* t[] = {"rate","depth","mix"}; return t[idx];
+    }
+    if (n.contains("phaser")||n.contains("tremolo")||n.contains("vibrato")) {
+        const char* t[] = {"rate","depth","mix"}; return t[idx];
+    }
+    if (n.contains("amp")) {
+        const char* t[] = {"gain","bass","treble"}; return t[idx];
+    }
+    if (n.contains("cabinet")||n.contains("cab")) {
+        const char* t[] = {"mix","lowcut","highcut"}; return t[idx];
+    }
+    if (n.contains("wah")||n.contains("filter")) {
+        const char* t[] = {"frequency","resonance","mix"}; return t[idx];
+    }
+    if (n.contains("pitch")||n.contains("octav")) {
+        const char* t[] = {"pitch","direct","mix"}; return t[idx];
+    }
+    const char* fallback[] = {"level","tone","mix"};
+    return fallback[idx];
+}
+
+// Read normalised 0-1 value from APVTS pointer attached to the AudioModule.
+float PedalSlot::readKnobValueFromDSP(int knobIndex) const
+{
+    if (audioModule == nullptr) return (knobIndex == 0) ? 0.5f : (knobIndex == 1 ? 0.5f : 0.7f);
+    auto paramName = getParamNameForKnob(knobIndex);
+    auto* ptr = audioModule->getParameterPointer(paramName);
+    if (ptr == nullptr) return 0.5f;
+    // ptr holds the raw APVTS value — just normalise to 0-1 for the knob visual.
+    // Most params are already 0-1; for dB/Hz params use a simple linear normalisation.
+    float raw = ptr->load();
+    return juce::jlimit(0.0f, 1.0f, raw);
+}
+
 PedalSlot::PedalSlot(const juce::String& name, const juce::String& cat)
     : effectName(name), category(cat)
 {
@@ -449,6 +509,10 @@ void PedalSlot::mouseDrag(const juce::MouseEvent& event)
         else if (activeKnob == 1) knob2Value = newValue;
         else if (activeKnob == 2) knob3Value = newValue;
         
+        // Fire callback so ParameterEditorPanel and DSP both update
+        if (onKnobChanged)
+            onKnobChanged(this, activeKnob, newValue);
+        
         repaint();
         return;
     }
@@ -469,16 +533,19 @@ void PedalSlot::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseW
     if (knob1Bounds.contains(event.position))
     {
         knob1Value = juce::jlimit(0.0f, 1.0f, knob1Value + wheel.deltaY * 0.1f);
+        if (onKnobChanged) onKnobChanged(this, 0, knob1Value);
         repaint();
     }
     else if (knob2Bounds.contains(event.position))
     {
         knob2Value = juce::jlimit(0.0f, 1.0f, knob2Value + wheel.deltaY * 0.1f);
+        if (onKnobChanged) onKnobChanged(this, 1, knob2Value);
         repaint();
     }
     else if (knob3Bounds.contains(event.position))
     {
         knob3Value = juce::jlimit(0.0f, 1.0f, knob3Value + wheel.deltaY * 0.1f);
+        if (onKnobChanged) onKnobChanged(this, 2, knob3Value);
         repaint();
     }
 }
@@ -505,20 +572,34 @@ void PedalSlot::mouseDoubleClick(const juce::MouseEvent& event)
 
 void PedalSlot::timerCallback()
 {
+    // Sync knob visuals with the live DSP values so both panels always agree
+    if (audioModule != nullptr && activeKnob < 0) // don't interrupt an active drag
+    {
+        float v0 = readKnobValueFromDSP(0);
+        float v1 = readKnobValueFromDSP(1);
+        float v2 = readKnobValueFromDSP(2);
+        if (std::abs(v0 - knob1Value) > 0.005f ||
+            std::abs(v1 - knob2Value) > 0.005f ||
+            std::abs(v2 - knob3Value) > 0.005f)
+        {
+            knob1Value = v0;
+            knob2Value = v1;
+            knob3Value = v2;
+            repaint();
+        }
+    }
+    
     if (!bypassed)
     {
         ledPhase += 0.03f;
         if (ledPhase > juce::MathConstants<float>::twoPi)
             ledPhase -= juce::MathConstants<float>::twoPi;
-        
         ledBrightness = 0.8f + 0.2f * std::sin(ledPhase);
         repaint();
     }
     
     if (hovered || hoverLift > 0.0f)
-    {
         repaint();
-    }
 }
 
 void PedalSlot::setBypassed(bool shouldBypass)

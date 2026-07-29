@@ -22,6 +22,23 @@ ModernPluginEditor::ModernPluginEditor(GuitarPedalRackProcessor& p)
     pedalBoardView.onPedalBypassToggled = [this](int index) { handleEffectBypassToggled(index); };
     pedalBoardView.onPedalRemoved = [this](int index) { handleEffectRemoved(index); };
     pedalBoardView.onPedalMoved = [this](int from, int to) { handleEffectMoved(from, to); };
+    pedalBoardView.onPedalKnobChanged = [this](int pedalIndex, int knobIndex, float value)
+    {
+        auto* pedal  = pedalBoardView.getPedalSlot(pedalIndex);
+        auto* effect = audioProcessor.getSignalChain().getEffect(pedalIndex);
+        if (!pedal || !effect) return;
+        
+        // Route to DSP via the parameter editor's existing setter logic
+        juce::String paramName = pedal->getParamNameForKnob(knobIndex);
+        
+        // Temporarily point the editor at this effect and call the setter
+        parameterEditor.setEffectForKnobSync(effect, pedal->getEffectName(), pedal->getCategory());
+        parameterEditor.setEffectParameterPublic(paramName, value);
+        
+        // If this pedal is already open in the bottom panel, sync its knob visually
+        if (pedalBoardView.getSelectedPedalIndex() == pedalIndex)
+            parameterEditor.refreshKnob(knobIndex, value);
+    };
     
     // ============ CONTROL BUTTONS ============
     addAndMakeVisible(addEffectButton);
@@ -346,11 +363,16 @@ void ModernPluginEditor::handleBrowserEffectSelected(const juce::String& effectI
     // Add to pedal board view
     pedalBoardView.addPedal(effectId, category);
     
+    // Link the new PedalSlot to its AudioModule so knobs are wired
+    int newIndex = pedalBoardView.getPedalCount() - 1;
+    auto* pedal = pedalBoardView.getPedalSlot(newIndex);
+    auto* effect = audioProcessor.getSignalChain().getEffect(newIndex);
+    if (pedal && effect)
+        pedal->setAudioModule(effect);
+    
     DBG("Added effect: " + effectId);
     
-    // Close browser
     toggleBrowser();
-    
     updateStatus();
 }
 
@@ -546,7 +568,10 @@ void ModernPluginEditor::syncUIWithProcessorChain()
             
             auto* pedal = pedalBoardView.getPedalSlot(i);
             if (pedal)
+            {
                 pedal->setBypassed(activeEffect->isBypassed());
+                pedal->setAudioModule(activeEffect); // wire knobs to live DSP
+            }
         }
     }
     
