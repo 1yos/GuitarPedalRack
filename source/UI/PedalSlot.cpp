@@ -550,22 +550,19 @@ void PedalSlot::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseW
 
 void PedalSlot::mouseDoubleClick(const juce::MouseEvent& event)
 {
-    // Reset knob to default (50%) on double-click
-    if (knob1Bounds.contains(event.position))
+    // Reset knob to default (50%) on double-click AND tell the DSP
+    auto resetKnob = [&](int idx, float& val)
     {
-        knob1Value = 0.5f;
+        val = 0.5f;
+        if (onKnobChanged) onKnobChanged(this, idx, 0.5f);
+        // Also clear the cached value so it resets cleanly
+        if (audioModule) audioModule->setUIValue(getParamNameForKnob(idx), 0.5f);
         repaint();
-    }
-    else if (knob2Bounds.contains(event.position))
-    {
-        knob2Value = 0.5f;
-        repaint();
-    }
-    else if (knob3Bounds.contains(event.position))
-    {
-        knob3Value = 0.5f;
-        repaint();
-    }
+    };
+    
+    if (knob1Bounds.contains(event.position))      resetKnob(0, knob1Value);
+    else if (knob2Bounds.contains(event.position)) resetKnob(1, knob2Value);
+    else if (knob3Bounds.contains(event.position)) resetKnob(2, knob3Value);
 }
 
 void PedalSlot::timerCallback()

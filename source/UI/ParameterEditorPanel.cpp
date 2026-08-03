@@ -646,6 +646,19 @@ void ParameterEditorPanel::setEffect(AudioModule* effect, const juce::String& na
     effectName = name;
     effectCategory = category;
     
+    // Seed uiValues with defaults the first time this effect is opened
+    // so knobs show sensible positions even before the user has touched them
+    if (effect != nullptr)
+    {
+        auto params = getParameterInfoForEffect(effectName);
+        for (const auto& param : params)
+        {
+            // Only seed if no value has been set yet (don't overwrite user changes)
+            if (effect->getUIValue(param.name, -999.0f) == -999.0f)
+                effect->setUIValue(param.name, param.defaultValue);
+        }
+    }
+    
     titleLabel.setText(effectName.toUpperCase(), juce::dontSendNotification);
     categoryLabel.setText(category, juce::dontSendNotification);
     
@@ -668,6 +681,15 @@ void ParameterEditorPanel::clearEffect()
     categoryLabel.setText("", juce::dontSendNotification);
     
     repaint();
+}
+
+void ParameterEditorPanel::seedDefaultValues(AudioModule* effect, const juce::String& name)
+{
+    if (!effect) return;
+    auto params = getParameterInfoForEffect(name);
+    for (const auto& param : params)
+        if (effect->getUIValue(param.name, -999.0f) == -999.0f)
+            effect->setUIValue(param.name, param.defaultValue);
 }
 
 void ParameterEditorPanel::createParameterControls()

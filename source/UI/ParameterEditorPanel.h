@@ -80,6 +80,9 @@ public:
     void clearEffect();
     bool isEditingEffect() const { return currentEffect != nullptr; }
     
+    // Seed default UI values on a module without opening the panel
+    void seedDefaultValues(AudioModule* effect, const juce::String& name);
+    
     // Public wrappers used by ModernPluginEditor for on-pedal knob sync
     void setEffectParameterPublic(const juce::String& paramName, float value)
     {

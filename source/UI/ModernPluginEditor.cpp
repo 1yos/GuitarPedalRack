@@ -367,7 +367,11 @@ void ModernPluginEditor::handleBrowserEffectSelected(const juce::String& effectI
     auto* pedal = pedalBoardView.getPedalSlot(newIndex);
     auto* effect = audioProcessor.getSignalChain().getEffect(newIndex);
     if (pedal && effect)
+    {
         pedal->setAudioModule(effect);
+        // Seed default UI values so on-pedal knobs show sensible positions from the start
+        parameterEditor.seedDefaultValues(effect, effectId);
+    }
     
     DBG("Added effect: " + effectId);
     
@@ -570,6 +574,7 @@ void ModernPluginEditor::syncUIWithProcessorChain()
             {
                 pedal->setBypassed(activeEffect->isBypassed());
                 pedal->setAudioModule(activeEffect); // wire knobs to live DSP
+                parameterEditor.seedDefaultValues(activeEffect, type); // seed on-pedal knob positions
             }
         }
     }
