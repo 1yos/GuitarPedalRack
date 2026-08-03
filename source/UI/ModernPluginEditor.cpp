@@ -28,14 +28,13 @@ ModernPluginEditor::ModernPluginEditor(GuitarPedalRackProcessor& p)
         auto* effect = audioProcessor.getSignalChain().getEffect(pedalIndex);
         if (!pedal || !effect) return;
         
-        // Route to DSP via the parameter editor's existing setter logic
         juce::String paramName = pedal->getParamNameForKnob(knobIndex);
         
-        // Temporarily point the editor at this effect and call the setter
+        // Cache + call DSP setter via the editor's routing
         parameterEditor.setEffectForKnobSync(effect, pedal->getEffectName(), pedal->getCategory());
         parameterEditor.setEffectParameterPublic(paramName, value);
         
-        // If this pedal is already open in the bottom panel, sync its knob visually
+        // If this pedal is open in the bottom panel, sync its knob visually
         if (pedalBoardView.getSelectedPedalIndex() == pedalIndex)
             parameterEditor.refreshKnob(knobIndex, value);
     };

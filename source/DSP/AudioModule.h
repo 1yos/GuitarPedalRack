@@ -159,6 +159,33 @@ public:
     {
         return parameterPointers.find(paramName) != parameterPointers.end();
     }
+    
+    // ── UI value cache ───────────────────────────────────────────────────────
+    // Stores the last value set from the UI for each named parameter.
+    // This allows the parameter panel to restore knob positions correctly
+    // when switching between pedals, even for effects not wired to APVTS.
+    
+    void setUIValue(const String& paramName, float value)
+    {
+        uiValues[paramName] = value;
+    }
+    
+    // Returns the cached UI value if present, otherwise falls back to:
+    // 1. APVTS pointer value  2. fallbackDefault
+    float getUIValue(const String& paramName, float fallbackDefault = 0.5f) const
+    {
+        // First check the UI cache
+        auto uiIt = uiValues.find(paramName);
+        if (uiIt != uiValues.end())
+            return uiIt->second;
+        
+        // Fall back to APVTS pointer
+        auto apvtsIt = parameterPointers.find(paramName);
+        if (apvtsIt != parameterPointers.end() && apvtsIt->second != nullptr)
+            return apvtsIt->second->load();
+        
+        return fallbackDefault;
+    }
 
 protected:
     //==============================================================================
@@ -175,6 +202,8 @@ protected:
     
     // Parameter pointers for real-time access
     std::map<String, std::atomic<float>*> parameterPointers;
+    // UI value cache — persists knob positions across pedal selection changes
+    std::map<String, float> uiValues;
 
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioModule)

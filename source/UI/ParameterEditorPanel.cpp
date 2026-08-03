@@ -694,23 +694,12 @@ void ParameterEditorPanel::createParameterControls()
         knob->setRange(param.min, param.max);
         knob->setValueSuffix(param.suffix);
         
-        // FIX: Read the actual current value from the effect instead of hardcoded default.
-        // Query via the same setter path in reverse — use AudioModule::getParameterValue
-        // to pull from APVTS pointer, then fall back to the hardcoded default.
+        // Read current value — try UI cache first, then APVTS pointer, then default
         float currentVal = param.defaultValue;
-        {
-            // Try to get live value from the parameter pointer attached to the module
-            auto* ptr = currentEffect->getParameterPointer(param.name);
-            if (ptr != nullptr)
-            {
-                // The pointer holds the raw APVTS value. Map it back to the knob range
-                // using the same normalisable range logic.
-                float rawVal = ptr->load();
-                // Only use it if it's within the declared range (sanity check)
-                if (rawVal >= param.min && rawVal <= param.max)
-                    currentVal = rawVal;
-            }
-        }
+        if (currentEffect != nullptr)
+            currentVal = currentEffect->getUIValue(param.name, param.defaultValue);
+        // Clamp to declared range as a safety check
+        currentVal = juce::jlimit(param.min, param.max, currentVal);
         
         knob->setValue(currentVal, false);
         
@@ -745,6 +734,10 @@ juce::Colour ParameterEditorPanel::getCategoryColor() const
 void ParameterEditorPanel::setEffectParameter(const juce::String& paramName, float value)
 {
     if (!currentEffect) return;
+    
+    // Cache the value so createParameterControls can restore it later
+    currentEffect->setUIValue(paramName, value);
+    
     juce::String p = paramName.toLowerCase().removeCharacters(" -_");
 
     // â”€â”€ DRIVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

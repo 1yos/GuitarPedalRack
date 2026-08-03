@@ -1,4 +1,4 @@
-﻿#include "PedalSlot.h"
+#include "PedalSlot.h"
 #include "Materials.h"
 #include "WornTextures.h"
 
@@ -49,17 +49,15 @@ juce::String PedalSlot::getParamNameForKnob(int idx) const
     return fallback[idx];
 }
 
-// Read normalised 0-1 value from APVTS pointer attached to the AudioModule.
+// Read knob value from the uiValues cache on the AudioModule.
+// This is the same cache used by the bottom ParameterEditorPanel, so both
+// panels always agree and user-set values survive pedal switching.
 float PedalSlot::readKnobValueFromDSP(int knobIndex) const
 {
     if (audioModule == nullptr) return (knobIndex == 0) ? 0.5f : (knobIndex == 1 ? 0.5f : 0.7f);
     auto paramName = getParamNameForKnob(knobIndex);
-    auto* ptr = audioModule->getParameterPointer(paramName);
-    if (ptr == nullptr) return 0.5f;
-    // ptr holds the raw APVTS value — just normalise to 0-1 for the knob visual.
-    // Most params are already 0-1; for dB/Hz params use a simple linear normalisation.
-    float raw = ptr->load();
-    return juce::jlimit(0.0f, 1.0f, raw);
+    // Fall back to 0.5 if nothing has been cached yet (i.e. user hasn't touched it)
+    return audioModule->getUIValue(paramName, 0.5f);
 }
 
 PedalSlot::PedalSlot(const juce::String& name, const juce::String& cat)
@@ -572,15 +570,17 @@ void PedalSlot::mouseDoubleClick(const juce::MouseEvent& event)
 
 void PedalSlot::timerCallback()
 {
-    // Sync knob visuals with the live DSP values so both panels always agree
-    if (audioModule != nullptr && activeKnob < 0) // don't interrupt an active drag
+    // Sync on-pedal knob visuals with the shared uiValues cache.
+    // Only update when not actively dragging a knob to avoid fighting the user.
+    if (audioModule != nullptr && activeKnob < 0)
     {
         float v0 = readKnobValueFromDSP(0);
         float v1 = readKnobValueFromDSP(1);
         float v2 = readKnobValueFromDSP(2);
-        if (std::abs(v0 - knob1Value) > 0.005f ||
-            std::abs(v1 - knob2Value) > 0.005f ||
-            std::abs(v2 - knob3Value) > 0.005f)
+        // Only repaint when a value actually changed (avoids unnecessary redraws)
+        if (std::abs(v0 - knob1Value) > 0.001f ||
+            std::abs(v1 - knob2Value) > 0.001f ||
+            std::abs(v2 - knob3Value) > 0.001f)
         {
             knob1Value = v0;
             knob2Value = v1;
