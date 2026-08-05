@@ -373,8 +373,7 @@ std::vector<SmartSignalChain::EffectGroup> SmartSignalChain::createEffectGroups(
     int numGroups = jmin(numThreads, static_cast<int>(effects.size()));
     groups.resize(numGroups);
     
-    // Simple round-robin distribution
-    // TODO: Implement smarter grouping based on actual CPU measurements
+    // Simple round-robin distribution across available threads
     for (int i = 0; i < static_cast<int>(effects.size()); ++i)
     {
         int groupIndex = i % numGroups;

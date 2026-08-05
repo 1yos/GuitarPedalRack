@@ -75,10 +75,45 @@ bool CabinetIR::loadIRFromFile(const File& file)
 
 bool CabinetIR::loadBuiltInIR(const String& irName)
 {
-    // TODO: Load from bundled IR resources
-    // For now, use default IR
-    loadDefaultIR();
+    // Generate a type-specific IR based on the cabinet name.
+    // Each cabinet type uses different frequency shaping to approximate its character.
     currentIRName = irName;
+    
+    // Select tone character based on cabinet type
+    float lowCut = 80.0f, midBoost = 0.0f, highCut = 5000.0f;
+    
+    if (irName.containsIgnoreCase("Greenback"))
+    {
+        lowCut = 100.0f; midBoost = 3.0f; highCut = 4000.0f; // Darker, middy
+    }
+    else if (irName.containsIgnoreCase("2x12") || irName.containsIgnoreCase("Combo"))
+    {
+        lowCut = 90.0f; midBoost = 1.5f; highCut = 5500.0f; // Warm combo character
+    }
+    else if (irName.containsIgnoreCase("1x12") || irName.containsIgnoreCase("Celestion"))
+    {
+        lowCut = 120.0f; midBoost = 2.0f; highCut = 6500.0f; // Focused, articulate
+    }
+    else if (irName.containsIgnoreCase("DI"))
+    {
+        lowCut = 40.0f; midBoost = 0.0f; highCut = 18000.0f; // Flat DI response
+    }
+    // Default: 4x12 V30 — present, slightly scooped
+    else
+    {
+        lowCut = 80.0f; midBoost = -1.0f; highCut = 5000.0f;
+    }
+    
+    currentIR = generateTypedIR(lowCut, midBoost, highCut);
+    
+    if (currentSampleRate > 0.0)
+    {
+        AudioBuffer<float> irCopy = currentIR;
+        convolution.loadImpulseResponse(std::move(irCopy), currentSampleRate,
+                                       juce::dsp::Convolution::Stereo::yes,
+                                       juce::dsp::Convolution::Trim::yes,
+                                       juce::dsp::Convolution::Normalise::yes);
+    }
     return true;
 }
 
@@ -92,7 +127,6 @@ StringArray CabinetIR::getBuiltInIRList() const
     irs.add("2x12 Combo - SM57");
     irs.add("1x12 Celestion - U87");
     irs.add("DI Clean");
-    // TODO: Add more built-in IRs
     return irs;
 }
 
@@ -232,6 +266,46 @@ void CabinetIR::loadDefaultIR()
                                        juce::dsp::Convolution::Trim::yes,
                                        juce::dsp::Convolution::Normalise::yes);
     }
+}
+
+AudioBuffer<float> CabinetIR::generateTypedIR(float lowCutHz, float midBoostDb, float highCutHz)
+{
+    const int irLength = 1024;
+    const double sr = currentSampleRate > 0.0 ? currentSampleRate : 44100.0;
+    AudioBuffer<float> ir(2, irLength);
+    Random random(42);
+    
+    for (int channel = 0; channel < 2; ++channel)
+    {
+        auto* data = ir.getWritePointer(channel);
+        float lpZ = 0.0f, hpZ = 0.0f;
+        
+        // Low-pass coefficient (simulates speaker high-cut)
+        float lpCoeff = 1.0f - std::exp(-2.0f * MathConstants<float>::pi * highCutHz / (float)sr);
+        // High-pass coefficient (simulates low-cut / room coupling)
+        float hpCoeff = 1.0f - std::exp(-2.0f * MathConstants<float>::pi * lowCutHz  / (float)sr);
+        // Mid boost/cut gain
+        float midGain = std::pow(10.0f, midBoostDb / 20.0f);
+        
+        for (int i = 0; i < irLength; ++i)
+        {
+            float decay = std::exp(-5.0f * i / irLength);
+            float sample = decay * (std::sin(i * 0.25f) + random.nextFloat() * 0.08f - 0.04f);
+            
+            // Apply low-pass (speaker cone rolloff)
+            lpZ += lpCoeff * (sample - lpZ);
+            // Apply high-pass (cabinet/room resonance)
+            float hpSample = sample - hpZ;
+            hpZ += hpCoeff * (sample - hpZ);
+            
+            // Blend with mid character
+            data[i] = lpZ * 0.7f + hpSample * 0.3f * midGain;
+        }
+    }
+    
+    float mag = ir.getMagnitude(0, irLength);
+    if (mag > 1e-6f) ir.applyGain(1.0f / mag);
+    return ir;
 }
 
 AudioBuffer<float> CabinetIR::generateDefaultIR()

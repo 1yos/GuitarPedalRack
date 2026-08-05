@@ -838,8 +838,8 @@ void EffectLibrary::registerAmpEffects()
         registerEffect(desc, []() { return std::make_unique<AmpSimulator>(); });
     }
     
-    // TODO: Add remaining 14 amp models in future phases
-    // - Marshall, Fender, Vox, Mesa, etc.
+    // One amp model included. Additional models (Marshall, Fender, Vox, Mesa)
+    // can be added by registering new AmpSimulator subclasses here.
 }
 
 void EffectLibrary::registerCabinetEffects()
@@ -861,12 +861,12 @@ void EffectLibrary::registerCabinetEffects()
         registerEffect(desc, []() { return std::make_unique<CabinetIR>(); });
     }
     
-    // TODO: Add remaining 11 cabinet types in future phases
-    // - Various speaker configurations and microphone placements
+    // One cabinet model included. Additional speaker configurations
+    // can be added by registering new CabinetIR subclasses or IR files here.
 }
 
 void EffectLibrary::registerSpecialEffects()
 {
-    // TODO: Add 15 special effects in future phases
-    // - Looper, Ring Modulator, Bit Crusher, Sample & Hold, etc.
+    // RingModulator and RingModAnalog are registered under Modulation.
+    // Additional special effects can be added here in future versions.
 }

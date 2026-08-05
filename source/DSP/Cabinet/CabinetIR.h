@@ -92,7 +92,8 @@ private:
     //==============================================================================
     // Helper functions
     void loadDefaultIR();
-    AudioBuffer<float> generateDefaultIR();  // Simple fallback IR
+    AudioBuffer<float> generateDefaultIR();
+    AudioBuffer<float> generateTypedIR(float lowCutHz, float midBoostDb, float highCutHz);
     float dbToLinear(float db);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CabinetIR)
