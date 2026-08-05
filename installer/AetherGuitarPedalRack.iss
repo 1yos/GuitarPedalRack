@@ -59,7 +59,7 @@ Source: "..\build\GuitarPedalRack_artefacts\Release\VST3\Aether Guitar Pedal Rac
 Source: "..\README.md"; \
     DestDir: "{app}"; \
     DestName: "README.md"; \
-    Flags: ignoreversion isreadme
+    Flags: ignoreversion
 
 [Dirs]
 ; Create user preset folder on install
